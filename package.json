@@ -1,0 +1,37 @@
+{
+  "name": "redux-test-recorder",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "./node_modules/.bin/webpack --watch --progress",
+    "build": "babel src --out-dir dist",
+    "test": "babel tests/index.js --out-file tests/build.js && node tests/build.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/conorhastings/redux-test-recorder.git"
+  },
+  "author": "Conor Hastings",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/conorhastings/redux-test-recorder/issues"
+  },
+  "homepage": "https://github.com/conorhastings/redux-test-recorder#readme",
+  "devDependencies": {
+    "babel-cli": "^6.4.0",
+    "babel-core": "^6.4.0",
+    "babel-loader": "^6.2.1",
+    "babel-plugin-transform-object-rest-spread": "^6.3.13",
+    "babel-preset-es2015": "^6.3.13",
+    "babel-preset-react": "^6.3.13",
+    "babelify": "^7.2.0",
+    "react": "^0.14.6",
+    "react-dom": "^0.14.6",
+    "react-redux": "^4.0.6",
+    "redux": "^3.0.5",
+    "tape": "^4.4.0",
+    "tape-run": "^2.1.1",
+    "webpack": "^1.12.10"
+  }
+}
