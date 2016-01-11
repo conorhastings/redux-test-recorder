@@ -5,12 +5,12 @@ import { render } from 'react-dom';
 import reduxRecord from '../dist';
 import { TestRecorder } from '../dist';
 
-const increment = (num) => {
-  return {type: 'INCREMENT', payload: num + 1};
+const increment = () => {
+  return {type: 'INCREMENT'};
 }
 
-const decrement = (num) => {
-  return {type: 'DECREMENT', payload: num - 1};
+const decrement = () => {
+  return {type: 'DECREMENT'};
 }
 
 const initState = 0;
@@ -19,8 +19,10 @@ const reducer = (state = initState, { type, payload }) => {
   let newState;
   switch (type) {
     case 'INCREMENT':
+      newState = state + 1;
+      break;
     case 'DECREMENT':
-      newState = payload;
+      newState = state - 1;
       break;
     default:
       newState = state;
@@ -33,11 +35,38 @@ const createStoreWithMiddleware = applyMiddleware(record.middleware)(createStore
 const store = createStoreWithMiddleware(reducer);
 
 const Counter = ({count, dispatch}) => {
+  const style = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 100
+  };
+  const buttonStyle = {
+    width: 200,
+    height: 100,
+    border: 'none',
+    backgroundColor: 'aliceblue',
+    color: '#888888',
+    cursor: 'pointer',
+    fontSize: 36,
+    fontWeight: 700
+  };
+  const h1Style = {
+    fontSize: 42,
+    color: 'aliceblue'
+  }
+  const pStyle = {
+    fontWeight: 300,
+    fontSize: 22,
+    color: 'aliceblue'
+  }
   return (
-    <div>
-      <button onClick={() => dispatch(increment(count))}>+</button>
-      <h1>{count}</h1>
-      <button onClick={() => dispatch(decrement(count))}>-</button>
+    <div style={style}>
+      <p style={pStyle}>To Use, press record button, interact with counter, and press record again</p>
+      <button style={buttonStyle} onClick={() => dispatch(increment())}>+</button>
+      <h1 style={h1Style}>{count}</h1>
+      <button style={buttonStyle} onClick={() => dispatch(decrement())}>-</button>
       <TestRecorder {...record.props} />
     </div>
   );
