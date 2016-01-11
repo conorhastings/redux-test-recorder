@@ -21,18 +21,18 @@ const reduxRecord = function(reducer, equality = (result, nextState) => result =
   }
   const getTest = () => {
     return (
-      `import test from 'tape';
-      let state = ${initState};
-      const reducer = ${stringifiedReducer};
-      const equality = ${equalityFunction};
-      test('expected state returned for each action', assert => {
-        const actions = ${JSON.stringify(actions, 4)};
-        const returnExpectedState = actions.map((action) => {
-          const result = reducer(state, action.action);
+      `var test = require('tape');
+      var state = ${initState};
+      var reducer = ${stringifiedReducer};
+      var equality = ${equalityFunction};
+      test('expected state returned for each action', function(assert) {
+        var actions = ${JSON.stringify(actions, 4)};
+        var returnExpectedState = actions.map(function (action) {
+          var result = reducer(state, action.action);
           state = result;
           return equality(result, action.nextState);
         });
-        assert.ok(returnExpectedState.every(expected => expected), 'expected state returned for each action');
+        assert.ok(returnExpectedState.every(function(expected) { return expected }), 'expected state returned for each action');
         assert.end();
       });`
     );
