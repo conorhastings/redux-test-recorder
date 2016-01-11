@@ -20981,30 +20981,37 @@
 	      this.forceUpdate();
 	    }
 	  }, {
+	    key: 'makeCircle',
+	    value: function makeCircle(radius, color) {
+	      return {
+	        width: radius,
+	        height: radius,
+	        backgroundColor: color,
+	        borderRadius: radius / 2,
+	        cursor: 'pointer',
+	        position: 'absolute',
+	        bottom: radius / 2,
+	        right: radius / 2
+	      };
+	    }
+	  }, {
 	    key: 'render',
 	    value: function render() {
 	      var _this2 = this;
 	
 	      var getRecordingStatus = this.props.getRecordingStatus;
 	
-	      var style = {
-	        width: 100,
-	        height: 100,
-	        backgroundColor: 'blue',
-	        color: 'white',
-	        borderRadius: 50,
-	        cursor: 'pointer',
-	        position: 'absolute',
-	        bottom: 50,
-	        right: 50
-	      };
-	      var symbol = getRecordingStatus() ? '../images/pause.png' : '../images/play.png';
+	      var style = this.makeCircle(50, 'gainsboro');
+	      var innerCirlcleStyle = this.makeCircle(25, 'red');
+	      if (!getRecordingStatus()) {
+	        innerCirlcleStyle.opacity = 0.5;
+	      }
 	      return _react2.default.createElement(
 	        'div',
 	        { style: style, onClick: function onClick() {
 	            return _this2.onClick(getRecordingStatus());
 	          } },
-	        _react2.default.createElement('img', { src: symbol })
+	        _react2.default.createElement('div', { style: innerCirlcleStyle })
 	      );
 	    }
 	  }]);

@@ -7,20 +7,29 @@ export default class Record extends React.Component {
     this.forceUpdate();
   }
 
-  render() {
-    const { getRecordingStatus } = this.props;
-    const style = {
-      width: 100,
-      height: 100,
-      backgroundColor: 'blue',
-      color: 'white',
-      borderRadius: 50,
+  makeCircle(radius, color) {
+   return {
+      width: radius,
+      height: radius,
+      backgroundColor: color,
+      borderRadius: radius / 2,
       cursor: 'pointer',
       position: 'absolute',
-      bottom: 50,
-      right: 50
-    };
-    const symbol = getRecordingStatus() ? '../images/pause.png' : '../images/play.png';
-    return <div style={style} onClick={() => this.onClick(getRecordingStatus())}><img src={symbol} /></div>;
+      bottom: radius / 2,
+      right: radius / 2
+    }; 
+  }
+  render() {
+    const { getRecordingStatus } = this.props;
+    const style = this.makeCircle(50, 'gainsboro');
+    let innerCirlcleStyle = this.makeCircle(25, 'red');
+    if (!getRecordingStatus()) {
+      innerCirlcleStyle.opacity = 0.5;
+    }
+    return (
+      <div style={style} onClick={() => this.onClick(getRecordingStatus())}>
+        <div style={innerCirlcleStyle}></div>
+      </div>
+    );
   }
 }
