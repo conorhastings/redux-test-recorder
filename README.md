@@ -25,8 +25,10 @@ const reducer = (state = initState, { type, payload }) => {
   let newState;
   switch (type) {
     case 'INCREMENT':
+      newState = state + 1;
+      break;
     case 'DECREMENT':
-      newState = payload;
+      newState = state - 1;
       break;
     default:
       newState = state;
@@ -49,9 +51,9 @@ import { TestRecorder } from 'redux-test-recorder';
 const Counter = ({count, dispatch}) => {
   return (
     <div>
-      <button onClick={() => dispatch(increment(count))}>+</button>
+      <button onClick={() => dispatch(increment())}>+</button>
       <h1>{count}</h1>
-      <button onClick={() => dispatch(decrement(count))}>-</button>
+      <button onClick={() => dispatch(decrement())}>-</button>
     </div>
   );
 }
