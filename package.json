@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "./node_modules/.bin/webpack --watch --progress",
     "build": "babel src --out-dir dist",
-    "test": "babel tests/index.js --out-file tests/build.js && node tests/build.js"
+    "test": "babel tests/index.js --out-file tests/build.js && node tests/build.js",
+    "prepublish": "npm run build"
   },
   "repository": {
     "type": "git",
