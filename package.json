@@ -2,7 +2,7 @@
   "name": "redux-test-recorder",
   "version": "0.0.3",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "dev": "./node_modules/.bin/webpack --watch --progress",
     "build": "babel src --out-dir dist",
