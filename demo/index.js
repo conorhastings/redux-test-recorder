@@ -29,7 +29,6 @@ const reducer = (state = initState, { type, payload }) => {
 }
 
 const record = reduxRecord(reducer);
-window.tests = record.props.getTest;
 const createStoreWithMiddleware = applyMiddleware(record.middleware)(createStore);
 const store = createStoreWithMiddleware(reducer);
 
