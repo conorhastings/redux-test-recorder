@@ -1,22 +1,27 @@
-import Record from './record-component';
+import TestRecorder from './test-recorder';
 
 const reduxRecord = function(reducer, equality = (result, nextState) => result === nextState) { 
   let initState;
   let actions = [];
   let recording = false;
+  let showingTest = false;
   const stringifiedReducer = reducer.toString();
   const equalityFunction = equality.toString();
-  const startRecord = () => {
-    recording = true;
-  }
-  const stopRecord = () => {
+  const startRecord = () => recording = true;
+  const stopRecord = () =>  {
     recording = false;
+    showingTest = true;
   }
   const getRecordingStatus = () => recording;
-  const recordingProps = { getRecordingStatus, startRecord, stopRecord };
-  const getTests = () => {
-    return `
-      import test from 'tape';
+  const shouldShowTest = () => showingTest;
+  const hideTest = () => {
+    actions = [];
+    showingTest = false;
+    initState = undefined;
+  }
+  const getTest = () => {
+    return (
+      `import test from 'tape';
       let state = ${initState};
       const reducer = ${stringifiedReducer};
       const equality = ${equalityFunction};
@@ -29,8 +34,8 @@ const reduxRecord = function(reducer, equality = (result, nextState) => result =
         });
         assert.ok(returnExpectedState.every(expected => expected), 'expected state returned for each action');
         assert.end();
-      });
-    `;
+      });`
+    );
   }
   const middleware = ({getState}) => (next) => (action) => {
     if (initState === undefined) {
@@ -42,8 +47,8 @@ const reduxRecord = function(reducer, equality = (result, nextState) => result =
       actions.push({action, nextState});
     }
   };
-  return { middleware, getTests, recordingProps };
+  const props = { getRecordingStatus, startRecord, stopRecord, getTest, shouldShowTest, hideTest };
+  return { middleware, props };
 };
-
-export { Record as Record };
+export { TestRecorder as TestRecorder };
 export default reduxRecord;

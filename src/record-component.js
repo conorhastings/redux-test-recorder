@@ -1,11 +1,6 @@
 import React from 'react';
 
 export default class Record extends React.Component {
-  onClick(recordingStatus) {
-    const click = recordingStatus ? this.props.stopRecord : this.props.startRecord;
-    click();
-    this.forceUpdate();
-  }
 
   makeCircle(radius, color) {
    return {
@@ -19,15 +14,22 @@ export default class Record extends React.Component {
       right: radius / 2
     }; 
   }
+
   render() {
-    const { getRecordingStatus } = this.props;
-    const style = this.makeCircle(50, 'gainsboro');
+    const { getRecordingStatus, onClick, onMouseOver, onMouseOut, hovered } = this.props;
+    let style = this.makeCircle(50, 'gainsboro');
+    style.boxShadow = '2px 2px 5px #888888';
     let innerCirlcleStyle = this.makeCircle(25, 'red');
-    if (!getRecordingStatus()) {
-      innerCirlcleStyle.opacity = 0.5;
+    if (!hovered) {
+      innerCirlcleStyle.opacity = 0.3;
     }
     return (
-      <div style={style} onClick={() => this.onClick(getRecordingStatus())}>
+      <div 
+        onMouseOver={onMouseOver}
+        onMouseOut={onMouseOut} 
+        style={style} 
+        onClick={() => this.props.onClick(getRecordingStatus())}
+      >
         <div style={innerCirlcleStyle}></div>
       </div>
     );
