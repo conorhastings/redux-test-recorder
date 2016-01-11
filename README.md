@@ -7,7 +7,7 @@ Redux test recorder is a redux middleware + included component for automagically
 
 <a href="http://conorhastings.com/redux-test-recorder/demo/index.html">Click here for a demo</a>
 
-<img src='http://i.imgur.com/0ionHNY.gif' />
+<img src='http://i.imgur.com/RUaEhkC.gif' />
 
 ### Install
 
