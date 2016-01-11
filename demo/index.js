@@ -3,6 +3,7 @@ import { Provider, connect } from 'react-redux';
 import React, { Component } from 'react';
 import { render } from 'react-dom';
 import reduxRecord from '../dist';
+import { Record } from '../dist';
 
 const increment = (num) => {
   return {type: 'INCREMENT', payload: num + 1};
@@ -38,6 +39,7 @@ const Counter = ({count, dispatch}) => {
       <button onClick={() => dispatch(increment(count))}>+</button>
       <h1>{count}</h1>
       <button onClick={() => dispatch(decrement(count))}>-</button>
+      <Record {...record.recordingProps} />
     </div>
   );
 }
