@@ -1,11 +1,18 @@
 import TestRecorder from './test-recorder';
 
-const reduxRecord = function(reducer, equality = (result, nextState) => result === nextState) { 
+const reduxRecord = function({
+  reducer, 
+  includeReducer = true, 
+  equality = (result, nextState) => result === nextState
+}) { 
   let initState;
   let actions = [];
   let recording = false;
   let showingTest = false;
-  const stringifiedReducer = reducer.toString();
+  let stringifiedReducer = "*****IMPORT YOUR REDUCER HERE*******";
+  if (includeReducer) {
+    stringifiedReducer = reducer.toString();
+  }
   const equalityFunction = equality.toString();
   const startRecord = () => recording = true;
   const stopRecord = () =>  {

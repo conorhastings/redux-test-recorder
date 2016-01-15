@@ -75,6 +75,7 @@ This will allow you to generate tests on your reducer with a record button in th
 ### Args
 
 * `reducer` - the root reducer of your redux app, used in the generated test.
+* `includeReducer` - a boolean value, if true, a stringified version of your reducer will be incuded in your generated test, if false, a note to import reducer for testing will be added. defaults to true.
 * `equality` - a function used to determine if the reducer returned correct state. Receives result of the reducer call and nextState returned during the flow of the application (**note, this api is in flux**).
 
 

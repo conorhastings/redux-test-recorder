@@ -30,7 +30,7 @@ const reducer = (state = initState, { type, payload }) => {
   return newState;
 }
 
-const record = reduxRecord(reducer);
+const record = reduxRecord({reducer, includeReducer: true});
 const createStoreWithMiddleware = applyMiddleware(record.middleware)(createStore);
 const store = createStoreWithMiddleware(reducer);
 
