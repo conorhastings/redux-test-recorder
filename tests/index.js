@@ -26,7 +26,7 @@ const reducer = (state = initState, { type, payload }) => {
   return newState;
 }
 
-const record = reduxRecord(reducer);
+const record = reduxRecord({reducer});
 const createStoreWithMiddleware = applyMiddleware(record.middleware)(createStore);
 const store = createStoreWithMiddleware(reducer);
 record.props.startRecord();
