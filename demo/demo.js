@@ -92,7 +92,7 @@
 	  return newState;
 	};
 	
-	var record = (0, _dist2.default)(reducer);
+	var record = (0, _dist2.default)({ reducer: reducer, includeReducer: true });
 	var createStoreWithMiddleware = (0, _redux.applyMiddleware)(record.middleware)(_redux.createStore);
 	var store = createStoreWithMiddleware(reducer);
 	
@@ -20915,7 +20915,7 @@
 /* 177 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	"use strict";
 	
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
@@ -20928,16 +20928,23 @@
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 	
-	var reduxRecord = function reduxRecord(reducer) {
-	  var equality = arguments.length <= 1 || arguments[1] === undefined ? function (result, nextState) {
+	var reduxRecord = function reduxRecord(_ref) {
+	  var reducer = _ref.reducer;
+	  var _ref$includeReducer = _ref.includeReducer;
+	  var includeReducer = _ref$includeReducer === undefined ? true : _ref$includeReducer;
+	  var _ref$equality = _ref.equality;
+	  var equality = _ref$equality === undefined ? function (result, nextState) {
 	    return result === nextState;
-	  } : arguments[1];
+	  } : _ref$equality;
 	
 	  var initState = undefined;
 	  var actions = [];
 	  var recording = false;
 	  var showingTest = false;
-	  var stringifiedReducer = reducer.toString();
+	  var stringifiedReducer = "*****IMPORT YOUR REDUCER HERE*******";
+	  if (includeReducer) {
+	    stringifiedReducer = reducer.toString();
+	  }
 	  var equalityFunction = equality.toString();
 	  var startRecord = function startRecord() {
 	    return recording = true;
@@ -20958,10 +20965,10 @@
 	    initState = undefined;
 	  };
 	  var getTest = function getTest() {
-	    return 'var test = require(\'tape\');\n      var state = ' + initState + ';\n      var reducer = ' + stringifiedReducer + ';\n      var equality = ' + equalityFunction + ';\n      test(\'expected state returned for each action\', function(assert) {\n        var actions = ' + JSON.stringify(actions, 4) + ';\n        var returnExpectedState = actions.map(function (action) {\n          var result = reducer(state, action.action);\n          state = result;\n          return equality(result, action.nextState);\n        });\n        assert.ok(returnExpectedState.every(function(expected) { return expected }), \'expected state returned for each action\');\n        assert.end();\n      });';
+	    return "var test = require('tape');\n      var state = " + initState + ";\n      var reducer = " + stringifiedReducer + ";\n      var equality = " + equalityFunction + ";\n      test('expected state returned for each action', function(assert) {\n        var actions = " + JSON.stringify(actions, 4) + ";\n        var returnExpectedState = actions.map(function (action) {\n          var result = reducer(state, action.action);\n          state = result;\n          return equality(result, action.nextState);\n        });\n        assert.ok(returnExpectedState.every(function(expected) { return expected }), 'expected state returned for each action');\n        assert.end();\n      });";
 	  };
-	  var middleware = function middleware(_ref) {
-	    var getState = _ref.getState;
+	  var middleware = function middleware(_ref2) {
+	    var getState = _ref2.getState;
 	    return function (next) {
 	      return function (action) {
 	        if (initState === undefined) {
