@@ -18,6 +18,18 @@
   "bugs": {
     "url": "https://github.com/conorhastings/redux-test-recorder/issues"
   },
+  "keywords": [
+    "react",
+    "redux",
+    "tests",
+    "tape",
+    "reducer",
+    "reactjs",
+    "component",
+    "react-component",
+    "record",
+    "react-redux"
+  ],
   "homepage": "https://github.com/conorhastings/redux-test-recorder#readme",
   "devDependencies": {
     "babel-cli": "^6.4.0",
