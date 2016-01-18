@@ -8,6 +8,7 @@ class TestRecorder extends React.Component {
     this.state = {
       hovered: false
     };
+    this.hideTest = this.hideTest.bind(this);
   }
 
   onClick(recordingStatus) {
@@ -17,7 +18,7 @@ class TestRecorder extends React.Component {
         this.setState({
           hovered: !this.state.hovered
         });
-      }, 500)
+      }, 500);
     }
     else {
       clearInterval(this.interval);
@@ -26,11 +27,14 @@ class TestRecorder extends React.Component {
     this.forceUpdate();
   }
 
+  hideTest() {
+    this.props.hideTest();
+    this.forceUpdate();
+  }
+
   onKeyPress(e) {
-    console.log(e);
     if (this.props.shouldShowTest && e.keyCode === 27) {
-      this.props.hideTest();
-      this.forceUpdate();
+      this.hideTest();
     }
   }
 
@@ -48,6 +52,7 @@ class TestRecorder extends React.Component {
           getTest={this.props.getTest}
           shouldShowTest={this.props.shouldShowTest}
           onKeyPress={(e) => this.onKeyPress(e)}
+          hideTest={this.hideTest}
         />
       </div>
     );

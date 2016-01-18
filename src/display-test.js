@@ -1,8 +1,13 @@
 import React from 'react';
 
+const onXClick = (e, close) => {
+  e.preventDefault();
+  close();
+};
+
 class DisplayTest extends React.Component {
   render() {
-    const { getTest, shouldShowTest, onKeyPress } = this.props;
+    const { getTest, shouldShowTest, onKeyPress, hideTest } = this.props;
     if (!shouldShowTest()) {
       return null;
     }
@@ -16,11 +21,23 @@ class DisplayTest extends React.Component {
       color: 'black',
       boxShadow: '2px 2px 5px #888888',
       overflowY: 'auto'
-    }
+    };
+    const xStyle = {
+      float: 'right',
+      fontSize: 22,
+      fontWeight: 700,
+      marginRight: 5,
+      cursor: 'pointer'
+    };
     return (
-      <pre><code>
-        <div contentEditable={true} onKeyUp={onKeyPress} style={style}>{getTest()}</div>
-      </code></pre>
+      <div style={style}>
+        <span style={xStyle} onClick={e => onXClick(e, hideTest)}>X</span>
+        <div contentEditable={true} onKeyUp={onKeyPress} style={{outline: 'none'}}>
+          <pre><code>
+            <span>{getTest()}</span>
+          </code></pre>
+        </div>
+      </div>
     );
   }
 }
