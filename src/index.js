@@ -34,6 +34,7 @@ const reduxRecord = function({
 `var test = require('tape');
 var state = ${initState};
 ${stringifiedReducer}
+var equality = ${equalityFunction};
 test('expected state returned for each action', function(assert) {
   var actions = ${JSON.stringify(actions, 4)};
   var returnExpectedState = actions.map(function (action) {
