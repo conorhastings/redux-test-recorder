@@ -9,9 +9,9 @@ const reduxRecord = function({
   let actions = [];
   let recording = false;
   let showingTest = false;
-  let stringifiedReducer = "*****IMPORT YOUR REDUCER HERE*******";
+  let stringifiedReducer = '/* IMPORT YOUR REDUCER HERE */';
   if (includeReducer) {
-    stringifiedReducer = reducer.toString();
+    stringifiedReducer = `var reducer = ${reducer.toString()}`;
   }
   const equalityFunction = equality.toString();
   const startRecord = () => recording = true;
@@ -33,8 +33,7 @@ const reduxRecord = function({
     return (
 `var test = require('tape');
 var state = ${initState};
-var reducer = ${stringifiedReducer};
-var equality = ${equalityFunction};
+${stringifiedReducer}
 test('expected state returned for each action', function(assert) {
   var actions = ${JSON.stringify(actions, 4)};
   var returnExpectedState = actions.map(function (action) {
