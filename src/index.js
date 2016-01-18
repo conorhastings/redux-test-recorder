@@ -27,21 +27,24 @@ const reduxRecord = function({
     initState = undefined;
   }
   const getTest = () => {
+    /* make my template string look ugly af here so the returned code has basically proper spacing
+     * TODO - look into if there is a better way to do this 
+    */
     return (
-      `var test = require('tape');
-      var state = ${initState};
-      var reducer = ${stringifiedReducer};
-      var equality = ${equalityFunction};
-      test('expected state returned for each action', function(assert) {
-        var actions = ${JSON.stringify(actions, 4)};
-        var returnExpectedState = actions.map(function (action) {
-          var result = reducer(state, action.action);
-          state = result;
-          return equality(result, action.nextState);
-        });
-        assert.ok(returnExpectedState.every(function(expected) { return expected }), 'expected state returned for each action');
-        assert.end();
-      });`
+`var test = require('tape');
+var state = ${initState};
+var reducer = ${stringifiedReducer};
+var equality = ${equalityFunction};
+test('expected state returned for each action', function(assert) {
+  var actions = ${JSON.stringify(actions, 4)};
+  var returnExpectedState = actions.map(function (action) {
+    var result = reducer(state, action.action);
+    state = result;
+    return equality(result, action.nextState);
+  });
+  assert.ok(returnExpectedState.every(function(expected) { return expected }), 'expected state returned for each action');
+  assert.end();
+});`
     );
   }
   const middleware = ({getState}) => (next) => (action) => {
