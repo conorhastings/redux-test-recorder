@@ -78,6 +78,8 @@ This will allow you to generate tests on your reducer with a record button in th
 
 * `reducer` - the root reducer of your redux app, used in the generated test.
 * `includeReducer` - a boolean value, if true, a stringified version of your reducer will be incuded in your generated test, if false, a note to import reducer for testing will be added. defaults to true.
+* `stateKey` - if instead of recording the whole state you only want to record a specific piece, pass that here (useful with `actionSubset` prop explained next).
+* `actionSubset` - allows you to record against a subset of actions instead of all actions. Useful combined with `stateKey` to test a single reducer.
 * `equality` - a function used to determine if the reducer returned correct state. Receives result of the reducer call and nextState returned during the flow of the application (**note, this api is in flux**).
 
 
