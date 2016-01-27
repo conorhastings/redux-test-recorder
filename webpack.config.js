@@ -1,6 +1,10 @@
 var path = require('path');
 var webpack = require('webpack');
 
+var definePlugin = {
+	'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
+};
+
 module.exports = {
 	entry: './src/index.js',
 	devtool: 'source-map',
@@ -21,9 +25,5 @@ module.exports = {
 			{ test: /\.css$/, loader: 'style!css' }
 		]
 	},
-	plugins: [
-		new webpack.DefinePlugin({
-			"process.env.NODE_ENV": JSON.stringify('production')
-		})
-	]
+	plugins: [new webpack.DefinePlugin(definePlugin)]
 };

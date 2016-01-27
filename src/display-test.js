@@ -1,6 +1,9 @@
 import React from 'react';
 import SyntaxHighlighter from 'react-syntax-highlighter';
-import 'highlight.js/styles/docco.css';
+// hacky for now until we run tests in browser
+if (process.env.NODE_ENV !== 'test') {
+  require('highlight.js/styles/docco.css');
+}
 
 const onXClick = (e, close) => {
   e.preventDefault();
