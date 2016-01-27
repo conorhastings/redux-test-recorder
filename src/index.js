@@ -1,8 +1,12 @@
 import TestRecorder from './test-recorder';
 
+const includes = (a = [], v) => a.indexOf(v) !== -1;
+
 const reduxRecord = function({
   reducer, 
   includeReducer = true, 
+  stateKey,
+  actionSubset,
   equality = (result, nextState) => result === nextState
 }) { 
   let initState;
@@ -49,12 +53,14 @@ test('expected state returned for each action', function(assert) {
   }
   const middleware = ({getState}) => (next) => (action) => {
     if (initState === undefined) {
-      initState = getState();
+      initState = stateKey ? getState()[stateKey] : getState();
     }
     next(action);
     if (recording) {
-      const nextState = getState();
-      actions.push({action, nextState});
+      const nextState = stateKey ? getState()[stateKey] : getState();
+      if (!actionSubset || includes(actionSubset, action.type)) {
+        actions.push({action, nextState});
+      }
     }
   };
   const props = { getRecordingStatus, startRecord, stopRecord, getTest, shouldShowTest, hideTest };
