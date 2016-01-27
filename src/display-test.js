@@ -1,11 +1,16 @@
 import React from 'react';
+import SyntaxHighlighter from 'react-syntax-highlighter';
+// hacky for now until we run tests in browser
+if (process.env.NODE_ENV !== 'test') {
+  require('highlight.js/styles/docco.css');
+}
 
 const onXClick = (e, close) => {
   e.preventDefault();
   close();
 };
 
-const DisplayTest = ({ getTest , shouldShowTest, onKeyPress, hideTest }) => {
+const DisplayTest = ({ getTest, shouldShowTest, onKeyPress, hideTest }) => {
   if (!shouldShowTest()) {
     return <noscript />;
   }
@@ -31,9 +36,13 @@ const DisplayTest = ({ getTest , shouldShowTest, onKeyPress, hideTest }) => {
     <div style={style}>
       <span style={xStyle} onClick={e => onXClick(e, hideTest)}>X</span>
       <div contentEditable={true} onKeyUp={onKeyPress} style={{outline: 'none'}}>
-        <pre><code>
-          <span>{getTest()}</span>
-        </code></pre>
+        <pre>
+          <code>
+            <SyntaxHighlighter language="javascript">
+              {getTest()}
+            </SyntaxHighlighter>
+          </code>
+        </pre>
       </div>
     </div>
   );
