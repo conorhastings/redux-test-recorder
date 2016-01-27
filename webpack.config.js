@@ -2,24 +2,28 @@ var path = require('path');
 var webpack = require('webpack');
 
 module.exports = {
-  context: path.join(__dirname),
-  devtool: 'source-map',
-  entry: {
-        demo: "./demo/index.js"
-    },
-  output: {
-    path: path.join(__dirname) + '/demo',
-    filename: "[name].js"
-  },
-  module: {
-      loaders: [{
-          test: /\.js?$/,
-          loader: 'babel',
-          query: {
-            presets: ['react', 'es2015'],
-            plugins: ['transform-object-rest-spread']
-          },
-          include: path.join(__dirname) + '/demo'
-      }]
-  },
+	entry: './src/index.js',
+	devtool: 'source-map',
+	output: {
+		path: path.join(__dirname, 'dist'),
+		filename: 'index.js',
+		library: 'ReduxTestRecorder',
+		libraryTarget: 'umd'
+	},
+	module: {
+		loaders: [
+			{
+				test: /\.js?$/,
+				loader: require.resolve('babel-loader'),
+				include: path.join(__dirname, 'src'),
+				exclude: path.join(__dirname, 'node_modules')
+			},
+			{ test: /\.css$/, loader: 'style!css' }
+		]
+	},
+	plugins: [
+		new webpack.DefinePlugin({
+			"process.env.NODE_ENV": JSON.stringify('production')
+		})
+	]
 };
