@@ -1,7 +1,5 @@
 import TestRecorder from './test-recorder';
 
-const includes = (a = [], v) => a.indexOf(v) !== -1;
-
 const reduxRecord = function({
   reducer, 
   includeReducer = true, 
@@ -58,7 +56,7 @@ test('expected state returned for each action', function(assert) {
     next(action);
     if (recording) {
       const nextState = stateKey ? getState()[stateKey] : getState();
-      if (!actionSubset || includes(actionSubset, action.type)) {
+      if (!actionSubset || actionSubset[action.type]) {
         actions.push({action, nextState});
       }
     }

@@ -64,7 +64,7 @@ const subtract = (state = initState2.subtract, { type, payload }) => {
   return newState;
 }
 const combined = combineReducers({add, subtract});
-const record2 = reduxRecord({reducer: add, stateKey: 'add', actionSubset: ['INCREMENT']});
+const record2 = reduxRecord({reducer: add, stateKey: 'add', actionSubset: { INCREMENT: 'INCREMENT' }});
 const createStoreWithMiddleware2 = applyMiddleware(record2.middleware)(createStore);
 const store2 = createStoreWithMiddleware2(combined);
 record2.props.startRecord();
