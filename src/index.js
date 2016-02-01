@@ -38,7 +38,7 @@ var state = ${initState};
 ${stringifiedReducer}
 var equality = ${equalityFunction};
 test('expected state returned for each action', function(assert) {
-  var actions = ${JSON.stringify(actions, 4)};
+  var actions = ${JSON.stringify(actions, null, 2)};
   var returnExpectedState = actions.map(function (action) {
     var result = reducer(state, action.action);
     state = result;
