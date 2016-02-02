@@ -11,7 +11,7 @@ Redux test recorder is a redux middleware + included component for automagically
 
 Also take a look at our <a href="https://travis-ci.org/conorhastings/redux-test-recorder">latest build</a> which currently runs a test generated using this module by taking advantage of the `eval` command. For a better idea of what is going on, you can take a look at the <a href="https://github.com/conorhastings/redux-test-recorder/blob/master/tests/index.js">test file here</a>.
 
-<img src='http://i.imgur.com/RUaEhkC.gif' />
+<img src='http://i.imgur.com/TUMGnnb.gif' />
 
 ### Install
 
@@ -78,8 +78,8 @@ This will allow you to generate tests on your reducer with a record button in th
 
 * `reducer` - the root reducer of your redux app, used in the generated test.
 * `includeReducer` - a boolean value, if true, a stringified version of your reducer will be incuded in your generated test, if false, a note to import reducer for testing will be added. defaults to true. Useful when used to generate actual tests so you can test updated functionality.
-* `stateKey(optional)` - if instead of recording the whole state you only want to record a specific piece, pass that here (useful with `actionSubset` prop explained next).
-* `actionSubset(optional)` - allows you to record against a subset of actions instead of all actions. Useful combined with `stateKey` to test a single reducer.
-* `equality(optional)` - a function used to determine if the reducer returned correct state. Receives result of the reducer call and nextState returned during the flow of the application (**note, this api is in flux**). deafults to `===`
+* `stateKey(*optional*)` - if instead of recording the whole state you only want to record a specific piece, pass that here (useful with `actionSubset` prop explained next).
+* `actionSubset(*optional*)` - allows you to record against a subset of actions instead of all actions. Useful combined with `stateKey` to test a single reducer.
+* `equality(*optional*)` - a function used to determine if the reducer returned correct state. Receives result of the reducer call and nextState returned during the flow of the application (**note, this api is in flux**). deafults to `===`
 
 
