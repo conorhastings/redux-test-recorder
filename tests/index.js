@@ -86,3 +86,21 @@ test('reducer not included when includeReducer = false', assert => {
   assert.ok(generatedTest.includes('/* IMPORT YOUR REDUCER HERE */'), "test includes note to import reducer");
 });
 
+test ('startRecord makes getRecordingStatus return true, and calling stop makes false', assert => {
+  assert.plan(2);
+  record3.props.startRecord();
+  assert.ok(record3.props.getRecordingStatus(), "getRecordingStatus is true after start");
+  record3.props.stopRecord();
+  assert.notOk(record3.props.getRecordingStatus(), "getRecordingStatus is false after stop");
+});
+
+
+
+
+
+
+
+
+
+
+
