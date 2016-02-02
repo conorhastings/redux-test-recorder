@@ -89,9 +89,17 @@ test('reducer not included when includeReducer = false', assert => {
 test ('startRecord makes getRecordingStatus return true, and calling stop makes false', assert => {
   assert.plan(2);
   record3.props.startRecord();
-  assert.ok(record3.props.getRecordingStatus(), "getRecordingStatus is true after start");
+  assert.ok(record3.props.getRecordingStatus(), 'getRecordingStatus is true after start');
   record3.props.stopRecord();
-  assert.notOk(record3.props.getRecordingStatus(), "getRecordingStatus is false after stop");
+  assert.notOk(record3.props.getRecordingStatus(), 'getRecordingStatus is false after stop');
+});
+
+test('shouldShowTest is true after stopRecord is fired and false after hideTest is fired', assert => {
+  assert.plan(2);
+  record3.props.stopRecord();
+  assert.ok(record3.props.shouldShowTest(), 'should show test after stopRecord is fired');
+  record3.props.hideTest();
+  assert.notOk(record3.props.shouldShowTest(), 'should hide test after hideTest is fired');
 });
 
 
