@@ -1,5 +1,6 @@
 import { createStore, combineReducers, applyMiddleware } from 'redux';
 import reduxRecord from '../dist';
+import test from 'tape';
 
 const increment = () => {
   return {type: 'INCREMENT'};
@@ -73,3 +74,15 @@ store2.dispatch(increment());
 store2.dispatch(increment());
 store2.dispatch(decrement());
 eval(record2.props.getTest());
+
+const record3 = reduxRecord({
+  reducer: add, 
+  includeReducer: false 
+});
+
+test('reducer not included when includeReducer = false', assert => {
+  assert.plan(1);
+  const generatedTest = record3.props.getTest();
+  assert.ok(generatedTest.includes('/* IMPORT YOUR REDUCER HERE */'), "test includes note to import reducer");
+});
+
