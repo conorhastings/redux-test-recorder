@@ -23,7 +23,8 @@ const DisplayTest = ({ getTest, shouldShowTest, onKeyPress, hideTest }) => {
     backgroundColor: 'gainsboro',
     color: 'black',
     boxShadow: '2px 2px 5px #888888',
-    overflowY: 'auto'
+    overflowY: 'auto',
+    zIndex: 99
   };
   const xStyle = {
     float: 'right',
