@@ -52,6 +52,9 @@ test('expected state returned for each action', function(assert) {
   const middleware = ({getState}) => (next) => (action) => {
     if (initState === undefined) {
       initState = stateKey ? getState()[stateKey] : getState();
+      if (typeof initState === 'object') {
+        initState = JSON.stringify(initState, null, 4);
+      }
     }
     next(action);
     if (recording) {
