@@ -79,6 +79,6 @@ This will allow you to generate tests on your reducer with a record button in th
 * `includeReducer` - a boolean value, if true, a stringified version of your reducer will be incuded in your generated test, if false, a note to import reducer for testing will be added. defaults to true. Useful when used to generate actual tests so you can test updated functionality.
 * `stateKey(*optional*)` - if instead of recording the whole state you only want to record a specific piece, pass that here (useful with `actionSubset` prop explained next).
 * `actionSubset(*optional*)` - allows you to record against a subset of actions instead of all actions. Useful combined with `stateKey` to test a single reducer.
-* `equality(*optional*)` - a function used to determine if the reducer returned correct state. Receives result of the reducer call and nextState returned during the flow of the application (**note, this api is in flux**). deafults to `===`
+* `equality(*optional*)` - a function used to determine if the reducer returned correct state. Receives result of the reducer call and nextState returned during the flow of the application (**note, this api is in flux**). deafults to `===`. This argument can *also* be a *string*. This is useful if you want to call a function you will include in your test file, since calling external functions will not properly stringify that external function. 
 
 

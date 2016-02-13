@@ -15,6 +15,7 @@ const reduxRecord = function({
   if (includeReducer) {
     stringifiedReducer = `var reducer = ${reducer.toString()}`;
   }
+  // we can skip type checking to see if equality arg is a string since string.toString() returns same string
   const equalityFunction = equality.toString();
   const startRecord = () => recording = true;
   const stopRecord = () =>  {
