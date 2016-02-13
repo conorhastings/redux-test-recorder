@@ -27,7 +27,7 @@ const reduxRecord = function({
     actions = [];
     showingTest = false;
     initState = undefined;
-  }
+  };
   const getTest = () => {
     /* make my template string look ugly af here so the returned code has basically proper spacing
      * TODO - look into if there is a better way to do this 
