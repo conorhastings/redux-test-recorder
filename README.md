@@ -8,6 +8,7 @@ Redux test recorder is a redux middleware + included component for automagically
 [![Build Status](https://travis-ci.org/conorhastings/redux-test-recorder.svg?branch=master)](https://travis-ci.org/conorhastings/redux-test-recorder)
 
 <a href="http://conorhastings.com/redux-test-recorder/demo/index.html">Click here for a demo</a>. 
+<a href="http://conorhastings.com/todo-mvc-redux-test-recorder/">And here for another demo with TodoMVC</a>
 
 Also take a look at our <a href="https://travis-ci.org/conorhastings/redux-test-recorder">latest build</a> which currently runs a test generated using this module by taking advantage of the `eval` command. For a better idea of what is going on, you can take a look at the <a href="https://github.com/conorhastings/redux-test-recorder/blob/master/tests/index.js">test file here</a>.
 
