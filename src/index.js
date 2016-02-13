@@ -5,7 +5,8 @@ const reduxRecord = function({
   includeReducer = true, 
   stateKey,
   actionSubset,
-  equality = (result, nextState) => result === nextState
+  equality = (result, nextState) => result === nextState,
+  imports = ''
 }) { 
   let initState;
   let actions = [];
@@ -35,6 +36,8 @@ const reduxRecord = function({
     */
     return (
 `var test = require('tape');
+${imports}
+
 var state = ${initState};
 ${stringifiedReducer}
 var equality = ${equalityFunction};

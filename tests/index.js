@@ -102,6 +102,17 @@ test('shouldShowTest is true after stopRecord is fired and false after hideTest 
   assert.notOk(record3.props.shouldShowTest(), 'should hide test after hideTest is fired');
 });
 
+const record4 = reduxRecord({
+  reducer: add, 
+  imports: `var equal = reqire('deep-equal');` 
+});
+
+
+test('extra imports are included when import arg is given', assert => {
+  assert.plan(1);
+  const generatedTest = record4.props.getTest();
+  assert.ok(generatedTest.includes(`var equal = reqire('deep-equal');`), "test includes additional imports");
+});
 
 
 
