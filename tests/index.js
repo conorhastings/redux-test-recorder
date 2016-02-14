@@ -83,7 +83,7 @@ const record3 = reduxRecord({
 test('reducer not included when includeReducer = false', assert => {
   assert.plan(1);
   const generatedTest = record3.props.getTest();
-  assert.ok(generatedTest.includes('/* IMPORT YOUR REDUCER HERE */'), "test includes note to import reducer");
+  assert.ok(generatedTest.includes('/* import reducer from YOUR_REDUCER_LOCATION_HERE */'), "test includes note to import reducer");
 });
 
 test ('startRecord makes getRecordingStatus return true, and calling stop makes false', assert => {

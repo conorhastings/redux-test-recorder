@@ -12,7 +12,7 @@ const reduxRecord = function({
   let actions = [];
   let recording = false;
   let showingTest = false;
-  let stringifiedReducer = '/* IMPORT YOUR REDUCER HERE */';
+  let stringifiedReducer = '/* import reducer from YOUR_REDUCER_LOCATION_HERE */';
   if (includeReducer) {
     stringifiedReducer = `var reducer = ${reducer.toString()}`;
   }
@@ -37,10 +37,12 @@ const reduxRecord = function({
     return (
 `var test = require('tape');
 ${imports}
+${stringifiedReducer}
 
 var state = ${initState};
-${stringifiedReducer}
+
 var equality = ${equalityFunction};
+
 test('expected state returned for each action', function(assert) {
   var actions = ${JSON.stringify(actions, null, 2)};
   var returnExpectedState = actions.map(function (action) {
