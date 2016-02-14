@@ -51,6 +51,6 @@
     "webpack": "^1.12.10"
   },
   "dependencies": {
-    "react-syntax-highlighter": "0.0.1"
+    "react-syntax-highlighter": "1.1.2"
   }
 }

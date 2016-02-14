@@ -1,9 +1,5 @@
 import React from 'react';
 import SyntaxHighlighter from 'react-syntax-highlighter';
-// hacky for now until we run tests in browser
-if (process.env.NODE_ENV !== 'test') {
-  require('highlight.js/styles/docco.css');
-}
 
 const onXClick = (e, close) => {
   e.preventDefault();
@@ -20,7 +16,7 @@ const DisplayTest = ({ getTest, shouldShowTest, onKeyPress, hideTest }) => {
     height: 600,
     right: 25,
     bottom: 80,
-    backgroundColor: 'gainsboro',
+    backgroundColor: '#f8f8ff',
     color: 'black',
     boxShadow: '2px 2px 5px #888888',
     overflowY: 'auto',
@@ -39,7 +35,7 @@ const DisplayTest = ({ getTest, shouldShowTest, onKeyPress, hideTest }) => {
       <div contentEditable={true} onKeyUp={onKeyPress} style={{outline: 'none'}}>
         <pre>
           <code>
-            <SyntaxHighlighter language="javascript">
+            <SyntaxHighlighter language='javascript' stylesheet='docco'>
               {getTest()}
             </SyntaxHighlighter>
           </code>
