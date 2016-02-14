@@ -45,16 +45,21 @@ var equality = ${equalityFunction};
 
 test('expected state returned for each action', function(assert) {
   var actions = ${JSON.stringify(actions, null, 2)};
-  var returnExpectedState = actions.map(function (action) {
+  var returnExpectedState = actions.every(function(action) {
     var result = reducer(state, action.action);
     state = result;
-    return equality(result, action.nextState);
+    return equality(result, action.nextState)
   });
-  assert.ok(returnExpectedState.every(function(expected) { return expected }), 'expected state returned for each action');
+  assert.ok(returnExpectedState, 'expected state returned for each action');
   assert.end();
 });`
     );
   }
+  var returnExpectedState = actions.every(function(action) {
+    var result = reducer(state, action.action);
+    state = result;
+    return equality(result, action.nextState)
+  });
   const middleware = ({getState}) => (next) => (action) => {
     if (initState === undefined) {
       initState = stateKey ? getState()[stateKey] : getState();
