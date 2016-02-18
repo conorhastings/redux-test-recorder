@@ -38,12 +38,10 @@ const reduxRecord = function({
 `var test = require('tape');
 ${imports}
 ${stringifiedReducer}
-
-var state = ${initState};
-
 var equality = ${equalityFunction};
 
 test('expected state returned for each action', function(assert) {
+  var state = ${initState};
   var actions = ${JSON.stringify(actions, null, 2)};
   actions.forEach(function(action, index) {
     var result = reducer(state, action.action);
