@@ -1,6 +1,6 @@
 {
   "name": "redux-test-recorder",
-  "version": "0.6.3",
+  "version": "0.7.0",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
