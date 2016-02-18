@@ -45,12 +45,11 @@ var equality = ${equalityFunction};
 
 test('expected state returned for each action', function(assert) {
   var actions = ${JSON.stringify(actions, null, 2)};
-  var returnExpectedState = actions.every(function(action) {
+  actions.forEach(function(action, index) {
     var result = reducer(state, action.action);
     state = result;
-    return equality(result, action.nextState)
+    assert.ok(equality(result, action.nextState), action.action.type + '(action index ' + index +') correctly updated state');
   });
-  assert.ok(returnExpectedState, 'expected state returned for each action');
   assert.end();
 });`
     );
