@@ -7,7 +7,15 @@ const onXClick = (e, close) => {
 };
 
 export default class DisplayTest extends React.Component {
+  constructor() {
+    super();
+    this.onClick = this.onClick.bind(this);
+    this.onKeyPress = this.onKeyPress.bind(this);
+  }
+
   componentDidMount() {
+    document.addEventListener('click', this.onClick);
+    document.addEventListener('keydown', this.onKeyPress);
     if (this.code) {
       this.code.setAttribute('contentEditable', true);
     }
@@ -17,6 +25,26 @@ export default class DisplayTest extends React.Component {
     // will be string true when getting attribute from native dom element
     if (this.code && this.code.getAttribute('contentEditable') !== 'true') {
       this.code.setAttribute('contentEditable', true);
+    }
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener('click', this.onClick);
+    document.removeEventListener('keydown', this.onKeyPress);
+  }
+
+  onKeyPress({ keyCode }) {
+    if (keyCode === 27) {
+      this.props.hideTest();
+    }
+  }
+
+  onClick({ target }) {
+    if (this.container && 
+        !this.container.contains(target) && 
+        this.props.shouldShowTest() &&
+        target.id !== 'redux-test-recorder-record-button') {
+      this.props.hideTest();
     }
   }
 
@@ -45,7 +73,7 @@ export default class DisplayTest extends React.Component {
       cursor: 'pointer'
     };
     return (
-      <div style={style}>
+      <div style={style} ref={container => this.container = container} onClick={this.onClick}>
         <span style={xStyle} onClick={e => onXClick(e, hideTest)}>X</span>
         <div ref={code => this.code = code} onKeyUp={onKeyPress} style={{outline: 'none'}}>
           <pre>

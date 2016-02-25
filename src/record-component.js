@@ -23,6 +23,7 @@ const Record = ({ getRecordingStatus, onClick, onMouseOver, onMouseOut, hovered 
   }
   return (
     <div 
+      id='redux-test-recorder-record-button'
       onMouseOver={onMouseOver}
       onMouseOut={onMouseOut} 
       style={style} 
