@@ -43,7 +43,7 @@ export default class DisplayTest extends React.Component {
     if (this.container && 
         !this.container.contains(target) && 
         this.props.shouldShowTest() &&
-        target.id !== 'redux-test-recorder-record-button') {
+        target.className !== 'redux-test-recorder-record-button') {
       this.props.hideTest();
     }
   }

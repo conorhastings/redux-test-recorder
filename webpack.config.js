@@ -21,8 +21,7 @@ module.exports = {
 				loader: require.resolve('babel-loader'),
 				include: path.join(__dirname, 'src'),
 				exclude: path.join(__dirname, 'node_modules')
-			},
-			{ test: /\.css$/, loader: 'style!css' }
+			}
 		]
 	},
 	plugins: [new webpack.DefinePlugin(definePlugin)]

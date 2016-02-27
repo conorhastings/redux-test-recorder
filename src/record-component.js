@@ -23,13 +23,13 @@ const Record = ({ getRecordingStatus, onClick, onMouseOver, onMouseOut, hovered 
   }
   return (
     <div 
-      id='redux-test-recorder-record-button'
+      className='redux-test-recorder-record-button'
       onMouseOver={onMouseOver}
       onMouseOut={onMouseOut} 
       style={style} 
       onClick={() => onClick(getRecordingStatus())}
     >
-      <div style={innerCirlcleStyle}></div>
+      <div className='redux-test-recorder-record-button' style={innerCirlcleStyle} />
     </div>
   );
 }
