@@ -1,6 +1,17 @@
 import React from 'react';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 
+// TODO STOP USING WEBPACK / CREATE BETTER SEPERATION BETWEEN FILES TO MAKE TESTING EASIER
+let saveAs;
+try {
+  if (window) {
+    saveAs = require('filesaver.js').saveAs
+  }
+}
+catch (e) {
+  // ignore error 
+}
+
 const onXClick = (e, close) => {
   e.preventDefault();
   close();
@@ -48,11 +59,18 @@ export default class DisplayTest extends React.Component {
     }
   }
 
+  saveFile(e) {
+    e.preventDefault();
+    const file = new Blob([this.props.getTest()], {type: 'text/plain;charset=utf-8'});
+    saveAs(file, 'test.js');
+  }
+
   render() {
     const { getTest, shouldShowTest, onKeyPress, hideTest } = this.props;
     if (!shouldShowTest()) {
       return <noscript />;
     }
+
     const style = {
       position: 'absolute',
       width: 500,
@@ -65,15 +83,26 @@ export default class DisplayTest extends React.Component {
       overflowY: 'auto',
       zIndex: 99
     };
+
     const xStyle = {
       float: 'right',
       fontSize: 22,
       fontWeight: 700,
       marginRight: 5,
+      cursor: 'pointer',
+      color: '#888888'
+    };
+
+    const saveStyle = {
+      color: '#888888', 
+      fontSize: 22, 
+      fontWeight: 600, 
       cursor: 'pointer'
     };
+
     return (
       <div style={style} ref={container => this.container = container} onClick={this.onClick}>
+        <span style={saveStyle} onClick={e => this.saveFile(e)}>Save As File</span>
         <span style={xStyle} onClick={e => onXClick(e, hideTest)}>X</span>
         <div ref={code => this.code = code} onKeyUp={onKeyPress} style={{outline: 'none'}}>
           <pre>

@@ -49,6 +49,7 @@
     "webpack": "^1.12.10"
   },
   "dependencies": {
+    "filesaver.js": "^0.2.0",
     "react-syntax-highlighter": "1.1.2"
   }
 }
