@@ -1,5 +1,6 @@
 import React from 'react';
 import SyntaxHighlighter from 'react-syntax-highlighter';
+import CloseOnEscape from 'react-close-on-escape';
 let saveAs;
 if (typeof window !== 'undefined') {
   saveAs = require('filesaver.js').saveAs
@@ -14,12 +15,10 @@ export default class DisplayTest extends React.Component {
   constructor() {
     super();
     this.onClick = this.onClick.bind(this);
-    this.onKeyPress = this.onKeyPress.bind(this);
   }
 
   componentDidMount() {
     document.addEventListener('click', this.onClick);
-    document.addEventListener('keydown', this.onKeyPress);
     if (this.code) {
       this.code.setAttribute('contentEditable', true);
     }
@@ -34,14 +33,8 @@ export default class DisplayTest extends React.Component {
 
   componentWillUnmount() {
     document.removeEventListener('click', this.onClick);
-    document.removeEventListener('keydown', this.onKeyPress);
   }
 
-  onKeyPress({ keyCode }) {
-    if (keyCode === 27) {
-      this.props.hideTest();
-    }
-  }
 
   onClick({ target }) {
     if (this.container && 
@@ -94,19 +87,21 @@ export default class DisplayTest extends React.Component {
     };
 
     return (
-      <div style={style} ref={container => this.container = container} onClick={this.onClick}>
-        <span style={saveStyle} onClick={e => this.saveFile(e)}>Save As File</span>
-        <span style={xStyle} onClick={e => onXClick(e, hideTest)}>X</span>
-        <div ref={code => this.code = code} onKeyUp={onKeyPress} style={{outline: 'none'}}>
-          <pre>
-            <code>
-              <SyntaxHighlighter language='javascript' stylesheet='docco'>
-                {getTest()}
-              </SyntaxHighlighter>
-            </code>
-          </pre>
+      <CloseOnEscape onEscape={onKeyPress}>
+        <div style={style} ref={container => this.container = container} onClick={this.onClick}>
+          <span style={saveStyle} onClick={e => this.saveFile(e)}>Save As File</span>
+          <span style={xStyle} onClick={e => onXClick(e, hideTest)}>X</span>
+          <div ref={code => this.code = code} style={{outline: 'none'}}>
+            <pre>
+              <code>
+                <SyntaxHighlighter language='javascript' stylesheet='docco'>
+                  {getTest()}
+                </SyntaxHighlighter>
+              </code>
+            </pre>
+          </div>
         </div>
-      </div>
+      </CloseOnEscape>
     );
   }
 }

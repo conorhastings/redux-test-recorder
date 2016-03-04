@@ -50,6 +50,7 @@
   },
   "dependencies": {
     "filesaver.js": "^0.2.0",
+    "react-close-on-escape": "^1.0.0",
     "react-syntax-highlighter": "1.1.2"
   }
 }

@@ -32,8 +32,8 @@ class TestRecorder extends React.Component {
     this.forceUpdate();
   }
 
-  onKeyPress(e) {
-    if (this.props.shouldShowTest && e.keyCode === 27) {
+  onKeyPress() {
+    if (this.props.shouldShowTest()) {
       this.hideTest();
     }
   }
