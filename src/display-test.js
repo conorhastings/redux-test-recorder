@@ -1,15 +1,8 @@
 import React from 'react';
 import SyntaxHighlighter from 'react-syntax-highlighter';
-
-// TODO STOP USING WEBPACK / CREATE BETTER SEPERATION BETWEEN FILES TO MAKE TESTING EASIER
 let saveAs;
-try {
-  if (window) {
-    saveAs = require('filesaver.js').saveAs
-  }
-}
-catch (e) {
-  // ignore error 
+if (typeof window !== 'undefined') {
+  saveAs = require('filesaver.js').saveAs
 }
 
 const onXClick = (e, close) => {
