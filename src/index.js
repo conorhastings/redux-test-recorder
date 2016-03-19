@@ -2,7 +2,7 @@ import TestRecorder from './test-recorder';
 
 const reduxRecord = function({
   reducer, 
-  includeReducer = true, 
+  includeReducer = false, 
   stateKey,
   actionSubset,
   equality = '(result, nextState) => result === nextState',
