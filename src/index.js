@@ -1,3 +1,4 @@
+import createTest from './create-test';
 import TestRecorder from './test-recorder';
 
 const reduxRecord = function({
@@ -6,7 +7,8 @@ const reduxRecord = function({
   stateKey,
   actionSubset,
   equality = '(result, nextState) => result === nextState',
-  imports = ''
+  imports = '',
+  testLib = 'tape'
 }) { 
   let initState;
   let actions = [];
@@ -30,28 +32,16 @@ const reduxRecord = function({
     showingTest = false;
     initState = undefined;
   };
-  const getTest = () => {
-    /* make my template string look ugly af here so the returned code has basically proper spacing
-     * TODO - look into if there is a better way to do this 
-    */
-    return (
-`var test = require('tape');
-${imports}
-${stringifiedReducer}
-var equality = ${equalityFunction};
-
-test('expected state returned for each action', function(assert) {
-  var state = ${initState};
-  var actions = ${JSON.stringify(actions, null, 2)};
-  actions.forEach(function(action, index) {
-    var result = reducer(state, action.action);
-    state = result;
-    assert.ok(equality(result, action.nextState), action.action.type + '(action index ' + index +') correctly updated state');
-  });
-  assert.end();
-});`
-    );
-  }
+  const getTest = () => (
+    createTest({
+      actions,
+      imports,
+      equalityFunction,
+      state: initState,
+      reducer: stringifiedReducer,
+      testLib: testLib
+    })
+  );
   const middleware = ({getState}) => (next) => (action) => {
     if (initState === undefined && recording) {
       initState = stateKey ? getState()[stateKey] : getState();
