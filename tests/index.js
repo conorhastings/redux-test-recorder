@@ -113,13 +113,3 @@ test('extra imports are included when import arg is given', assert => {
   const generatedTest = record4.props.getTest();
   assert.ok(generatedTest.includes(`var equal = reqire('deep-equal');`), "test includes additional imports");
 });
-
-
-
-
-
-
-
-
-
-
