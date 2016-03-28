@@ -1,4 +1,4 @@
-import createTest from './create-test';
+import createTest, { isTestLibrarySupported } from './create-test';
 import TestRecorder from './test-recorder';
 
 const reduxRecord = function({
@@ -32,8 +32,16 @@ const reduxRecord = function({
     showingTest = false;
     initState = undefined;
   };
+  const genTest = typeof testLib === 'function' ? testLib : createTest;
+  if (typeof testLib !== 'string' && typeof testLib !== 'function') {
+    throw new Error('testLib argument must be a string or a function');
+  }
+  if (typeof testLib === 'string' && !isTestLibrarySupported(testLib)) {
+    throw new Error('testLib argument does not contain a supported testing library. ' + 
+      'Feel free to make a pr adding support or use a custom test generation function for testLib arg');
+  }
   const getTest = () => (
-    createTest({
+    genTest({
       actions,
       imports,
       equalityFunction,

@@ -8,6 +8,8 @@ const libToTestCreation = {
   'mocha': createMochaTest
 };
 
+export const isTestLibrarySupported = (lib) => Object.keys(libToTestCreation).indexOf(lib) !== -1;
+
 export default function createTest({testLib, state, actions, imports, reducer, equalityFunction}) {
   return libToTestCreation[testLib](arguments[0]);
 }

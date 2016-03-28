@@ -102,14 +102,82 @@ test('shouldShowTest is true after stopRecord is fired and false after hideTest 
   assert.notOk(record3.props.shouldShowTest(), 'should hide test after hideTest is fired');
 });
 
-const record4 = reduxRecord({
-  reducer: add, 
-  imports: `var equal = reqire('deep-equal');` 
-});
-
 
 test('extra imports are included when import arg is given', assert => {
   assert.plan(1);
+  const record4 = reduxRecord({
+    reducer: add, 
+    imports: `var equal = reqire('deep-equal');` 
+  });
   const generatedTest = record4.props.getTest();
-  assert.ok(generatedTest.includes(`var equal = reqire('deep-equal');`), "test includes additional imports");
+  assert.ok(generatedTest.includes(`var equal = reqire('deep-equal');`), 'test includes additional imports');
+});
+
+test('it should generate a mocha test, when testLib arg === mocha', assert => {
+  assert.plan(1);
+  const record5 = reduxRecord({
+    reducer: reducer, 
+    testLib: 'mocha'
+  });
+  const generatedTest = record5.props.getTest();
+  assert.ok(generatedTest.includes('describe'), 'generated tested is in mocha style');
+});
+
+test('it should generate an ava test, when testLib arg === ava', assert => {
+  assert.plan(1);
+  const record6 = reduxRecord({
+    reducer: reducer, 
+    testLib: 'ava'
+  });
+  const generatedTest = record6.props.getTest();
+  assert.ok(generatedTest.includes('ava'), 'generated tested is in ava style');
+});
+
+test('it should generate a tape test, when testLib arg is not supplied', assert => {
+  assert.plan(1);
+  const record7 = reduxRecord({
+    reducer: reducer
+  });
+  const generatedTest = record7.props.getTest();
+  assert.ok(generatedTest.includes('tape'), 'generated tested is in tape style');
+});
+
+test('it should generate a tape test, when testLib arg is tape', assert => {
+  assert.plan(1);
+  const record8 = reduxRecord({
+    reducer: reducer,
+    testLib: 'tape'
+  });
+  const generatedTest = record8.props.getTest();
+  assert.ok(generatedTest.includes('tape'), 'generated tested is in tape style');
+});
+
+test('it should use a custom test generation function when arg supplied to testLib is function not string', assert => {
+  assert.plan(1);
+  const record8 = reduxRecord({
+    reducer: reducer,
+    testLib: () => 'custom test'
+  });
+  const generatedTest = record8.props.getTest();
+  assert.equal(generatedTest, 'custom test','generated tested is in custom style');
+});
+
+test('it should throw an error if testLib arg is not string or function', assert => {
+  assert.plan(1);
+  assert.throws(() => (
+    reduxRecord({
+      reducer: reducer,
+      testLib: {}
+    })
+  ), 'testLib argument must be a string or a function');
+});
+
+test('it should throw an error if testLib arg is string and not currently supported lib', assert => {
+  assert.plan(1);
+  assert.throws(() => (
+    reduxRecord({
+      reducer: reducer,
+      testLib: 'faketestlibrary'
+    }, 'testLib argument does not contain a supported testing library. Feel free to make a pr adding support or use a custom test generation function for testLib arg')
+  ));
 });
