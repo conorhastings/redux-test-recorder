@@ -59,10 +59,10 @@ export default class DisplayTest extends React.Component {
 
     const style = {
       position: 'absolute',
-      width: 500,
-      height: 600,
-      right: 25,
-      bottom: 80,
+      width: '500px',
+      height: '600px',
+      right: '25px',
+      bottom: '80px',
       backgroundColor: '#f8f8ff',
       color: 'black',
       boxShadow: '2px 2px 5px #888888',
@@ -72,16 +72,16 @@ export default class DisplayTest extends React.Component {
 
     const xStyle = {
       float: 'right',
-      fontSize: 22,
+      fontSize: '22px',
       fontWeight: 700,
-      marginRight: 5,
+      marginRight: '5px',
       cursor: 'pointer',
       color: '#888888'
     };
 
     const saveStyle = {
       color: '#888888', 
-      fontSize: 22, 
+      fontSize: '22px', 
       fontWeight: 600, 
       cursor: 'pointer'
     };
