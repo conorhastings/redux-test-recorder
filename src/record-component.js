@@ -2,14 +2,14 @@ import React from 'react';
 
 const makeCircle = (radius, color) => {
  return {
-    width: radius,
-    height: radius,
+    width: `${radius}px`,
+    height: `${radius}px`,
     backgroundColor: color,
-    borderRadius: radius / 2,
+    borderRadius: `${(radius / 2)}px`,
     cursor: 'pointer',
     position: 'absolute',
-    bottom: radius / 2,
-    right: radius / 2
+    bottom: `${(radius / 2)}px`,
+    right: `${(radius / 2)}px`
   }; 
 };
 
