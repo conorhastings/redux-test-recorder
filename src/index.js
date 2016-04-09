@@ -8,12 +8,14 @@ const reduxRecord = function({
   actionSubset,
   equality = '(result, nextState) => result === nextState',
   imports = '',
-  testLib = 'tape'
+  testLib = 'tape',
+  numTestsToSave = 5
 }) { 
   let initState;
   let actions = [];
   let recording = false;
   let showingTest = false;
+  let prevTests = [];
   let stringifiedReducer = '/* import reducer from YOUR_REDUCER_LOCATION_HERE */';
   if (includeReducer) {
     stringifiedReducer = `var reducer = ${reducer.toString()}`;
@@ -40,16 +42,26 @@ const reduxRecord = function({
     throw new Error('testLib argument does not contain a supported testing library. ' + 
       'Feel free to make a pr adding support or use a custom test generation function for testLib arg');
   }
-  const getTest = () => (
-    genTest({
-      actions,
-      imports,
-      equalityFunction,
-      state: initState,
-      reducer: stringifiedReducer,
-      testLib: testLib
-    })
-  );
+
+  const getTest = (index) => {
+    if (prevTests.length === numTestsToSave) {
+      prevTests = prevTests.slice(1, prevTests.length);
+    }
+    const newTest = (
+      genTest({
+        actions,
+        imports,
+        equalityFunction,
+        state: initState,
+        reducer: stringifiedReducer,
+        testLib: testLib
+      })
+    );
+    prevTests.push(newTest);
+    index = index || prevTests.length - 1;
+    return prevTests[index];
+  };
+
   const middleware = ({getState}) => (next) => (action) => {
     if (initState === undefined && recording) {
       initState = stateKey ? getState()[stateKey] : getState();

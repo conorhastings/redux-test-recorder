@@ -4,3 +4,4 @@ dist
 tests/build.js
 demo/demo.js
 demo/demo.js.map
+npm-debug.log 
