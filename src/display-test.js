@@ -54,7 +54,7 @@ export default class DisplayTest extends React.Component {
   render() {
     const { getTest, shouldShowTest, onKeyPress, hideTest } = this.props;
     if (!shouldShowTest()) {
-      return <noscript />;
+      return null;
     }
 
     const style = {
