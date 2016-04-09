@@ -107,7 +107,7 @@ export default class DisplayTest extends React.Component {
               </pre>
             </div>
           </div>
-          <Tabs numTests={getNumTests()} onTabClick={onTabClick} />
+          <Tabs numTests={getNumTests()} onTabClick={onTabClick} testIndex={testIndex} />
         </div>
       </CloseOnEscape>
     );

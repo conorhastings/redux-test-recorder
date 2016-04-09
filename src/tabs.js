@@ -20,21 +20,21 @@ const tabStyle = {
   cursor: 'pointer'
 };
 
-const Tab = ({ index, onClick }) => (
+const Tab = ({ index, onClick, isActive }) => (
   <div 
     onClick={() => onClick(index)}
     className='redux-test-recorder-tab'
-    style={tabStyle}
+    style={isActive ? {...tabStyle, backgroundColor: '#9ACBDB'} : tabStyle}
   >
     {index + 1}
   </div>
 );
 
-const Tabs = ({ numTests, onTabClick }) => {
+const Tabs = ({ numTests, onTabClick, testIndex = numTests - 1 }) => {
   const range = Array.from({length: numTests}).map((x, i) => i);
   return(
     <div style={tabsStyle} className='redux-test-recorder-tabs'>
-      {range.map(n => <Tab key={n} index={n} onClick={onTabClick} />)}
+      {range.map(n => <Tab key={n} index={n} onClick={onTabClick} isActive={testIndex === n} />)}
     </div>
   );
 };
