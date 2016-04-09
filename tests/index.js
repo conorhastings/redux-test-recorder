@@ -36,6 +36,17 @@ store.dispatch(increment());
 store.dispatch(increment());
 store.dispatch(decrement());
 eval(record.props.getTest());
+record.props.stopRecord();
+record.props.hideTest();
+record.props.startRecord();
+store.dispatch(increment());
+record.props.stopRecord();
+eval(record.props.getTest());
+
+test("generates and stores multiple different tests", assert => {
+  assert.notEqual(record.props.getTest(0), record.props.getTest(1));
+  assert.end();
+});
 
 const initState2 = {
   add: 0,

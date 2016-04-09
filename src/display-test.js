@@ -50,8 +50,8 @@ export default class DisplayTest extends React.Component {
 
   saveFile(e) {
     e.preventDefault();
-    const file = new Blob([this.props.getTest()], {type: 'text/plain;charset=utf-8'});
-    saveAs(file, 'test.js');
+    const file = new Blob([this.props.getTest(this.props.testIndex)], {type: 'text/plain;charset=utf-8'});
+    saveAs(file, `test-${this.props.testIndex}.js`);
   }
 
   render() {
