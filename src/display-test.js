@@ -7,6 +7,35 @@ if (typeof window !== 'undefined') {
   saveAs = require('filesaver.js').saveAs
 }
 
+const style = {
+  position: 'absolute',
+  width: '500px',
+  height: '600px',
+  right: '25px',
+  bottom: '80px',
+  backgroundColor: '#f8f8ff',
+  color: 'black',
+  boxShadow: '2px 2px 5px #888888',
+  overflowY: 'auto',
+  zIndex: 99
+};
+
+const xStyle = {
+  float: 'right',
+  fontSize: '22px',
+  fontWeight: 700,
+  marginRight: '5px',
+  cursor: 'pointer',
+  color: '#888888'
+};
+
+const saveStyle = {
+  color: '#888888', 
+  fontSize: '22px', 
+  fontWeight: 600, 
+  cursor: 'pointer'
+};
+
 const onXClick = (e, close) => {
   e.preventDefault();
   close();
@@ -62,34 +91,6 @@ export default class DisplayTest extends React.Component {
     if (!shouldShowTest()) {
       return null;
     }
-    const style = {
-      position: 'absolute',
-      width: '500px',
-      height: '600px',
-      right: '25px',
-      bottom: '80px',
-      backgroundColor: '#f8f8ff',
-      color: 'black',
-      boxShadow: '2px 2px 5px #888888',
-      overflowY: 'auto',
-      zIndex: 99
-    };
-
-    const xStyle = {
-      float: 'right',
-      fontSize: '22px',
-      fontWeight: 700,
-      marginRight: '5px',
-      cursor: 'pointer',
-      color: '#888888'
-    };
-
-    const saveStyle = {
-      color: '#888888', 
-      fontSize: '22px', 
-      fontWeight: 600, 
-      cursor: 'pointer'
-    };
 
     return (
       <CloseOnEscape onEscape={onKeyPress}>

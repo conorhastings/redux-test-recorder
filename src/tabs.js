@@ -17,7 +17,8 @@ const tabStyle = {
   marginRight: '1px',
   fontSize: '35px',
   textAlign: 'center',
-  cursor: 'pointer'
+  cursor: 'pointer',
+  lineHeight: 'normal'
 };
 
 const Tab = ({ index, onClick, isActive }) => (
