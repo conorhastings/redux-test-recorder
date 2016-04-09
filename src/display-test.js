@@ -50,8 +50,11 @@ export default class DisplayTest extends React.Component {
 
   saveFile(e) {
     e.preventDefault();
+    const hasTestIndex = this.props.testIndex !== null && this.props.testIndex !== undefined;
+    const suffix = hasTestIndex ? `-${this.props.testIndex + 1}` : '';
+    console.log(suffix);
     const file = new Blob([this.props.getTest(this.props.testIndex)], {type: 'text/plain;charset=utf-8'});
-    saveAs(file, `test-${this.props.testIndex}.js`);
+    saveAs(file, `test${suffix}.js`);
   }
 
   render() {
