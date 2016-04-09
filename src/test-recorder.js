@@ -6,9 +6,11 @@ class TestRecorder extends React.Component {
   constructor() {
     super();
     this.state = {
-      hovered: false
+      hovered: false,
+      testIndex: null
     };
     this.hideTest = this.hideTest.bind(this);
+    this.onTabClick = this.onTabClick.bind(this);
   }
 
   onClick(recordingStatus) {
@@ -27,9 +29,13 @@ class TestRecorder extends React.Component {
     this.forceUpdate();
   }
 
+  onTabClick(testIndex) {
+    this.setState({ testIndex });
+  }
+
   hideTest() {
     this.props.hideTest();
-    this.forceUpdate();
+    this.setState({ testIndex: null });
   }
 
   onKeyPress() {
@@ -50,9 +56,12 @@ class TestRecorder extends React.Component {
         />
         <DisplayTest 
           getTest={this.props.getTest}
+          testIndex={this.state.testIndex}
           shouldShowTest={this.props.shouldShowTest}
           onKeyPress={(e) => this.onKeyPress(e)}
           hideTest={this.hideTest}
+          onTabClick={this.onTabClick}
+          getNumTests={this.props.getNumTests}
         />
       </div>
     );

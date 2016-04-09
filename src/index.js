@@ -44,23 +44,34 @@ const reduxRecord = function({
   }
 
   const getTest = (index) => {
-    if (prevTests.length === numTestsToSave) {
-      prevTests = prevTests.slice(1, prevTests.length);
+    if (index === null || index === undefined) {
+      const test = (
+        genTest({
+          actions,
+          imports,
+          equalityFunction,
+          state: initState,
+          reducer: stringifiedReducer,
+          testLib: testLib
+        })
+      );
+      let testIndex = prevTests.indexOf(test);
+      const isNew = testIndex === -1;
+      if (isNew) {
+        if (prevTests.length === numTestsToSave) {
+          prevTests = prevTests.slice(1, prevTests.length);
+        }
+        prevTests.push(test);
+        index = prevTests.length - 1;
+      }
+      else {
+        index = testIndex;
+      }
     }
-    const newTest = (
-      genTest({
-        actions,
-        imports,
-        equalityFunction,
-        state: initState,
-        reducer: stringifiedReducer,
-        testLib: testLib
-      })
-    );
-    prevTests.push(newTest);
-    index = index || prevTests.length - 1;
     return prevTests[index];
   };
+
+  const getNumTests = () => prevTests.length;
 
   const middleware = ({getState}) => (next) => (action) => {
     if (initState === undefined && recording) {
@@ -77,7 +88,7 @@ const reduxRecord = function({
       }
     }
   };
-  const props = { getRecordingStatus, startRecord, stopRecord, getTest, shouldShowTest, hideTest };
+  const props = { getRecordingStatus, startRecord, stopRecord, getTest, shouldShowTest, hideTest, getNumTests };
   return { middleware, props };
 };
 export { TestRecorder as TestRecorder };

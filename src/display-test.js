@@ -1,4 +1,5 @@
 import React from 'react';
+import Tabs from './tabs';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import CloseOnEscape from 'react-close-on-escape';
 let saveAs;
@@ -40,7 +41,9 @@ export default class DisplayTest extends React.Component {
     if (this.container && 
         !this.container.contains(target) && 
         this.props.shouldShowTest() &&
-        target.className !== 'redux-test-recorder-record-button') {
+        target.className !== 'redux-test-recorder-record-button' &&
+        target.className !== 'redux-test-recorder-tabs' &&
+        target.className !== 'redux-test-recorder-tab') {
       this.props.hideTest();
     }
   }
@@ -52,11 +55,10 @@ export default class DisplayTest extends React.Component {
   }
 
   render() {
-    const { getTest, shouldShowTest, onKeyPress, hideTest } = this.props;
+    const { getTest, shouldShowTest, onKeyPress, hideTest, getNumTests, testIndex, onTabClick } = this.props;
     if (!shouldShowTest()) {
       return null;
     }
-
     const style = {
       position: 'absolute',
       width: '500px',
@@ -88,18 +90,21 @@ export default class DisplayTest extends React.Component {
 
     return (
       <CloseOnEscape onEscape={onKeyPress}>
-        <div style={style} ref={container => this.container = container} onClick={this.onClick}>
-          <span style={saveStyle} onClick={e => this.saveFile(e)}>Save As File</span>
-          <span style={xStyle} onClick={e => onXClick(e, hideTest)}>X</span>
-          <div ref={code => this.code = code} style={{outline: 'none'}}>
-            <pre>
-              <code>
-                <SyntaxHighlighter language='javascript' stylesheet='docco'>
-                  {getTest()}
-                </SyntaxHighlighter>
-              </code>
-            </pre>
+        <div>
+          <div style={style} ref={container => this.container = container} onClick={this.onClick}>
+            <span style={saveStyle} onClick={e => this.saveFile(e)}>Save As File</span>
+            <span style={xStyle} onClick={e => onXClick(e, hideTest)}>X</span>
+            <div ref={code => this.code = code} style={{outline: 'none'}}>
+              <pre>
+                <code>
+                  <SyntaxHighlighter language='javascript' stylesheet='docco'>
+                    {getTest(testIndex)}
+                  </SyntaxHighlighter>
+                </code>
+              </pre>
+            </div>
           </div>
+          <Tabs numTests={getNumTests()} onTabClick={onTabClick} />
         </div>
       </CloseOnEscape>
     );
