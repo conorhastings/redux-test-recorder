@@ -82,7 +82,8 @@ This will allow you to generate tests on your reducer with a record button in th
 * `equality(*optional*)` - a function used to determine if the reducer returned correct state. Receives result of the reducer call and nextState returned during the flow of the application (**note, this api is in flux**). deafults to `===`. This argument can *also* be a *string*. This is useful if you want to call a function you will include in your test file, since calling external functions will not properly stringify that external function. 
 * `imports(*optional*)` - a string argument where you can pass in other modules that you would like included iny our test file. Useful if you want to reference external functions in your equality check.
 * `testLib(*optional*)` - defaults to `tape`. Currently supports `tape`, `ava`, and `mocha`. You can also optionally supply a function to this argument to generate your own tests. Will receive `state, actions, imports, reducer, equalityFunction` as arguments and expects return type to be a string containing your test contents.
-* `numTestsToSave(*optional, defaults to 5)` - number of previous tests that will be accessible in the panel when tests are being displayed. Higher number = newer.
+* `numTestsToSave(*optional*, defaults to 5)` - number of previous tests that will be accessible in the panel when tests are being displayed. Higher number = newer.
+* `stateParser(*optional*) - a string referencing a function(similar to the equality argument) for the state to be passed into and parsed. You may want to use this if for example parts of your state are immutable.
 
 ### Create Your Own Testing Interface
 

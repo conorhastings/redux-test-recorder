@@ -1,6 +1,8 @@
 import { createStore, combineReducers, applyMiddleware } from 'redux';
 import reduxRecord from '../dist';
 import test from 'tape';
+import { fromJS, Map } from "immutable";
+import deepEqual from 'deep-equal';
 
 const increment = () => {
   return {type: 'INCREMENT'};
@@ -192,3 +194,57 @@ test('it should throw an error if testLib arg is string and not currently suppor
     }, 'testLib argument does not contain a supported testing library. Feel free to make a pr adding support or use a custom test generation function for testLib arg')
   ));
 });
+
+const immutableState = {
+  count: Map({
+    total: 0
+  })
+};
+
+const immutableReducer = (state = immutableState, { type, payload }) => {
+  let newState = Object.assign({}, state);
+  switch (type) {
+    case 'INCREMENT':
+      newState.count = state.count.set('total', state.count.get('total') + 1);
+      break;
+    case 'DECREMENT':
+      newState.count = state.count.set('total', state.count.get('total') - 1);
+      break;
+    default:
+      newState = state;
+  }
+  return newState;
+}
+
+function stateParser(state) {
+  return Object.keys(state).reduce((newState, stateKey) => {
+    newState[stateKey] = fromJS(state[stateKey]);
+    return newState;
+  }, {});
+}
+
+function equality(result, nextState) {
+  const resultToJS = Object.keys(result).reduce((state, key) => {
+    state[key] = result[key].toJS();
+    return state;
+  }, {});
+  const nextStateToJS = Object.keys(nextState).reduce((state, key) => {
+    state[key] = nextState[key].toJS();
+    return state;
+  }, {});
+
+  return deepEqual(resultToJS, nextStateToJS);
+}
+
+const immutableRecord = reduxRecord({
+  reducer: immutableReducer, 
+  includeReducer: true, 
+  stateParser: 'stateParser',
+  equality
+});
+const immutableStoreWithMiddleware = applyMiddleware(immutableRecord.middleware)(createStore);
+const immutableStore = immutableStoreWithMiddleware(immutableReducer);
+
+immutableRecord.props.startRecord();
+immutableStore.dispatch(increment());
+eval(immutableRecord.props.getTest());

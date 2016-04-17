@@ -9,7 +9,8 @@ const reduxRecord = function({
   equality = '(result, nextState) => result === nextState',
   imports = '',
   testLib = 'tape',
-  numTestsToSave = 5
+  numTestsToSave = 5,
+  stateParser
 }) { 
   let initState;
   let actions = [];
@@ -52,7 +53,8 @@ const reduxRecord = function({
           equalityFunction,
           state: initState,
           reducer: stringifiedReducer,
-          testLib: testLib
+          testLib: testLib,
+          stateParser
         })
       );
       let testIndex = prevTests.indexOf(test);

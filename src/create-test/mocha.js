@@ -1,10 +1,12 @@
-export default function createMochaTest({state, actions, imports, reducer, equalityFunction}) {
+export default function createMochaTest({state, actions, imports, reducer, equalityFunction, stateParser}) {
+  state = stateParser ? `${stateParser}(${state})` : state;
+  const nextStateString = stateParser ? `${stateParser}(action.nextState)` : 'action.nextState';
   const its = actions.map((action, index) => {
     return `  it('${action.action.type} (action index ${index}) should correctly update state', function() {
     var action = actions[${index}];
     var result = reducer(state, action.action);
     state = result;
-    assert.ok(equality(result, action.nextState));
+    assert.ok(equality(result, ${nextStateString}));
   });
 `
   }).join('\n');
