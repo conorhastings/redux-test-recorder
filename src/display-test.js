@@ -1,6 +1,7 @@
 import React from 'react';
 import Tabs from './tabs';
 import SyntaxHighlighter from 'react-syntax-highlighter';
+import { docco } from 'react-syntax-highlighter/dist/styles';
 import CloseOnEscape from 'react-close-on-escape';
 let saveAs;
 if (typeof window !== 'undefined') {
@@ -101,7 +102,7 @@ export default class DisplayTest extends React.Component {
             <div ref={code => this.code = code} style={{outline: 'none'}}>
               <pre>
                 <code>
-                  <SyntaxHighlighter language='javascript' stylesheet='docco'>
+                  <SyntaxHighlighter language='javascript' style={docco}>
                     {getTest(testIndex)}
                   </SyntaxHighlighter>
                 </code>
