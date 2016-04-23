@@ -20917,8 +20917,6 @@
 
 	'use strict';
 	
-	var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
-	
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
@@ -20949,7 +20947,6 @@
 	  var _ref$numTestsToSave = _ref.numTestsToSave;
 	  var numTestsToSave = _ref$numTestsToSave === undefined ? 5 : _ref$numTestsToSave;
 	
-	  var initState = void 0;
 	  var actions = [];
 	  var recording = false;
 	  var showingTest = false;
@@ -20976,7 +20973,6 @@
 	  var hideTest = function hideTest() {
 	    actions = [];
 	    showingTest = false;
-	    initState = undefined;
 	  };
 	  var genTest = typeof testLib === 'function' ? testLib : _createTest2.default;
 	  if (typeof testLib !== 'string' && typeof testLib !== 'function') {
@@ -20992,7 +20988,6 @@
 	        actions: actions,
 	        imports: imports,
 	        equalityFunction: equalityFunction,
-	        state: initState,
 	        reducer: stringifiedReducer,
 	        testLib: testLib
 	      });
@@ -21019,18 +21014,15 @@
 	    var getState = _ref2.getState;
 	    return function (next) {
 	      return function (action) {
-	        if (initState === undefined && recording) {
-	          initState = stateKey ? getState()[stateKey] : getState();
-	          if ((typeof initState === 'undefined' ? 'undefined' : _typeof(initState)) === 'object') {
-	            initState = JSON.stringify(initState, null, 4);
-	          }
-	        }
-	        next(action);
 	        if (recording) {
+	          var prevState = stateKey ? getState()[stateKey] : getState();
+	          next(action);
 	          var nextState = stateKey ? getState()[stateKey] : getState();
 	          if (!actionSubset || actionSubset[action.type]) {
-	            actions.push({ action: action, nextState: nextState });
+	            actions.push({ action: action, prevState: prevState, nextState: nextState });
 	          }
+	        } else {
+	          next(action);
 	        }
 	      };
 	    };
@@ -21099,13 +21091,12 @@
 	});
 	exports.default = createTapeTest;
 	function createTapeTest(_ref) {
-	  var state = _ref.state;
 	  var actions = _ref.actions;
 	  var imports = _ref.imports;
 	  var reducer = _ref.reducer;
 	  var equalityFunction = _ref.equalityFunction;
 	
-	  return "var test = require('tape');\n" + imports + "\n" + reducer + "\nvar equality = " + equalityFunction + ";\n\ntest('expected state returned for each action', function(assert) {\n  var state = " + state + ";\n  var actions = " + JSON.stringify(actions, null, 2) + ";\n  actions.forEach(function(action, index) {\n    var result = reducer(state, action.action);\n    state = result;\n    assert.ok(equality(result, action.nextState), action.action.type + '(action index ' + index +') correctly updated state');\n  });\n  assert.end();\n});";
+	  return "var test = require('tape');\n" + imports + "\n" + reducer + "\nvar equality = " + equalityFunction + ";\n\ntest('expected state returned for each action', function(assert) {\n  var actions = " + JSON.stringify(actions, null, 2) + ";\n  actions.forEach(function(action, index) {\n    var result = reducer(action.prevState, action.action);\n    assert.ok(equality(result, action.nextState), action.action.type + '(action index ' + index +') correctly updated state');\n  });\n  assert.end();\n});";
 	}
 
 /***/ },
@@ -21119,16 +21110,15 @@
 	});
 	exports.default = createAvaTest;
 	function createAvaTest(_ref) {
-	  var state = _ref.state;
 	  var actions = _ref.actions;
 	  var imports = _ref.imports;
 	  var reducer = _ref.reducer;
 	  var equalityFunction = _ref.equalityFunction;
 	
 	  var asserts = actions.map(function (action, index) {
-	    return 'test(\'' + action.action.type + ' (action index ' + index + ') should correctly update state\', function(t) {\n    var action = actions[' + index + '];\n    var result = reducer(state, action.action);\n    state = result;\n    t.ok(equality(result, action.nextState));\n  });';
+	    return 'test(\'' + action.action.type + ' (action index ' + index + ') should correctly update state\', function(t) {\n    var action = actions[' + index + '];\n    var result = reducer(action.prevState, action.action);\n    t.ok(equality(result, action.nextState));\n  });';
 	  }).join('\n\n');
-	  return 'var test = require(\'ava\');\n' + imports + '\n' + reducer + '\nvar equality = ' + equalityFunction + ';\nvar actions = ' + JSON.stringify(actions, null, 2) + ';\nvar state = ' + state + ';\n\n' + asserts;
+	  return 'var test = require(\'ava\');\n' + imports + '\n' + reducer + '\nvar equality = ' + equalityFunction + ';\nvar actions = ' + JSON.stringify(actions, null, 2) + ';\n\n' + asserts;
 	}
 
 /***/ },
@@ -21142,16 +21132,15 @@
 	});
 	exports.default = createMochaTest;
 	function createMochaTest(_ref) {
-	  var state = _ref.state;
 	  var actions = _ref.actions;
 	  var imports = _ref.imports;
 	  var reducer = _ref.reducer;
 	  var equalityFunction = _ref.equalityFunction;
 	
 	  var its = actions.map(function (action, index) {
-	    return '  it(\'' + action.action.type + ' (action index ' + index + ') should correctly update state\', function() {\n    var action = actions[' + index + '];\n    var result = reducer(state, action.action);\n    state = result;\n    assert.ok(equality(result, action.nextState));\n  });\n';
+	    return '  it(\'' + action.action.type + ' (action index ' + index + ') should correctly update state\', function() {\n    var action = actions[' + index + '];\n    var result = reducer(active.prevState, action.action);\n    assert.ok(equality(result, action.nextState));\n  });\n';
 	  }).join('\n');
-	  return 'var assert = require(\'assert\');\n' + imports + '\n' + reducer + '\n\nvar equality = ' + equalityFunction + ';\n\ndescribe(\'redux reducer test\', function() {\n  var state;\n  var actions;\n  before(function() {\n    state = ' + state + ';\n    actions = ' + JSON.stringify(actions, null, 2) + ';\n  });\n\n  after(function() {\n    state = {};\n    actions = [];\n  });\n\n' + its + '\n});\n';
+	  return 'var assert = require(\'assert\');\n' + imports + '\n' + reducer + '\n\nvar equality = ' + equalityFunction + ';\n\ndescribe(\'redux reducer test\', function() {\n  var actions;\n  before(function() {\n    actions = ' + JSON.stringify(actions, null, 2) + ';\n  });\n\n  after(function() {\n    actions = [];\n  });\n\n' + its + '\n});\n';
 	}
 
 /***/ },
@@ -21363,7 +21352,9 @@
 	
 	var _reactSyntaxHighlighter2 = _interopRequireDefault(_reactSyntaxHighlighter);
 	
-	var _reactCloseOnEscape = __webpack_require__(403);
+	var _styles = __webpack_require__(336);
+	
+	var _reactCloseOnEscape = __webpack_require__(408);
 	
 	var _reactCloseOnEscape2 = _interopRequireDefault(_reactCloseOnEscape);
 	
@@ -21377,8 +21368,37 @@
 	
 	var saveAs = void 0;
 	if (typeof window !== 'undefined') {
-	  saveAs = __webpack_require__(404).saveAs;
+	  saveAs = __webpack_require__(409).saveAs;
 	}
+	
+	var style = {
+	  position: 'absolute',
+	  width: '500px',
+	  height: '600px',
+	  right: '25px',
+	  bottom: '80px',
+	  backgroundColor: '#f8f8ff',
+	  color: 'black',
+	  boxShadow: '2px 2px 5px #888888',
+	  overflowY: 'auto',
+	  zIndex: 99
+	};
+	
+	var xStyle = {
+	  float: 'right',
+	  fontSize: '22px',
+	  fontWeight: 700,
+	  marginRight: '5px',
+	  cursor: 'pointer',
+	  color: '#888888'
+	};
+	
+	var saveStyle = {
+	  color: '#888888',
+	  fontSize: '22px',
+	  fontWeight: 600,
+	  cursor: 'pointer'
+	};
 	
 	var onXClick = function onXClick(e, close) {
 	  e.preventDefault();
@@ -21454,34 +21474,6 @@
 	      if (!shouldShowTest()) {
 	        return null;
 	      }
-	      var style = {
-	        position: 'absolute',
-	        width: '500px',
-	        height: '600px',
-	        right: '25px',
-	        bottom: '80px',
-	        backgroundColor: '#f8f8ff',
-	        color: 'black',
-	        boxShadow: '2px 2px 5px #888888',
-	        overflowY: 'auto',
-	        zIndex: 99
-	      };
-	
-	      var xStyle = {
-	        float: 'right',
-	        fontSize: '22px',
-	        fontWeight: 700,
-	        marginRight: '5px',
-	        cursor: 'pointer',
-	        color: '#888888'
-	      };
-	
-	      var saveStyle = {
-	        color: '#888888',
-	        fontSize: '22px',
-	        fontWeight: 600,
-	        cursor: 'pointer'
-	      };
 	
 	      return _react2.default.createElement(
 	        _reactCloseOnEscape2.default,
@@ -21521,7 +21513,7 @@
 	                  null,
 	                  _react2.default.createElement(
 	                    _reactSyntaxHighlighter2.default,
-	                    { language: 'javascript', stylesheet: 'docco' },
+	                    { language: 'javascript', style: _styles.docco },
 	                    getTest(testIndex)
 	                  )
 	                )
@@ -21574,7 +21566,8 @@
 	  marginRight: '1px',
 	  fontSize: '35px',
 	  textAlign: 'center',
-	  cursor: 'pointer'
+	  cursor: 'pointer',
+	  lineHeight: 'normal'
 	};
 	
 	var Tab = function Tab(_ref) {
@@ -21627,13 +21620,15 @@
 	});
 	exports.default = SyntaxHighlighter;
 	
-	var _core = __webpack_require__(187);
+	var _lowlight = __webpack_require__(187);
 	
-	var _core2 = _interopRequireDefault(_core);
+	var _lowlight2 = _interopRequireDefault(_lowlight);
 	
 	var _react = __webpack_require__(13);
 	
 	var _react2 = _interopRequireDefault(_react);
+	
+	var _styles = __webpack_require__(336);
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 	
@@ -21662,16 +21657,19 @@
 		};
 	}
 	function createElement(node, style, key) {
-		if (node.type === "text") {
+		var properties = node.properties;
+		var type = node.type;
+		var tagName = node.tagName;
+		var value = node.value;
+	
+		if (type === "text") {
 			return _react2.default.createElement(
 				Text,
 				{ key: key },
-				node.value
+				value
 			);
-		} else if (node.tagName) {
-			var TagName = node.tagName;
-			var properties = node.properties;
-	
+		} else if (tagName) {
+			var TagName = tagName;
 			var childrenCreator = createChildren(style);
 			var nodeStyle = createStyleObject(properties.className, style);
 			var children = childrenCreator(node.children);
@@ -21686,17 +21684,14 @@
 	function SyntaxHighlighter(props) {
 		var language = props.language;
 		var children = props.children;
-		var _props$stylesheet = props.stylesheet;
-		var stylesheet = _props$stylesheet === undefined ? 'default' : _props$stylesheet;
+		var _props$style = props.style;
+		var style = _props$style === undefined ? _styles.defaultStyle : _props$style;
 	
-		var style = __webpack_require__(189)("./" + stylesheet).default;
-		var lang = __webpack_require__(256)("./" + language);
-		_core2.default.registerLanguage(language, lang);
-		var codeTree = _core2.default.highlight(language, children);
+		var codeTree = _lowlight2.default.highlight(language, children);
 		var defaultPreStyle = style.hljs || { backgroundColor: '#fff' };
 		return _react2.default.createElement(
 			'pre',
-			_extends({ style: defaultPreStyle }, props),
+			_extends({}, props, { style: defaultPreStyle }),
 			_react2.default.createElement(
 				'code',
 				null,
@@ -21709,6 +21704,181 @@
 
 /***/ },
 /* 187 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * @author Titus Wormer
+	 * @copyright 2016 Titus Wormer
+	 * @license MIT
+	 * @module lowlight
+	 * @fileoverview Virtual syntax highlighting for virtual
+	 *   DOMs and non-HTML things.
+	 */
+	
+	'use strict';
+	
+	/* eslint-env commonjs */
+	
+	var low = __webpack_require__(188);
+	
+	/* jscs:disable maximumLineLength */
+	
+	low.registerLanguage('1c', __webpack_require__(190));
+	low.registerLanguage('accesslog', __webpack_require__(191));
+	low.registerLanguage('actionscript', __webpack_require__(192));
+	low.registerLanguage('apache', __webpack_require__(193));
+	low.registerLanguage('applescript', __webpack_require__(194));
+	low.registerLanguage('arduino', __webpack_require__(195));
+	low.registerLanguage('armasm', __webpack_require__(196));
+	low.registerLanguage('xml', __webpack_require__(197));
+	low.registerLanguage('asciidoc', __webpack_require__(198));
+	low.registerLanguage('aspectj', __webpack_require__(199));
+	low.registerLanguage('autohotkey', __webpack_require__(200));
+	low.registerLanguage('autoit', __webpack_require__(201));
+	low.registerLanguage('avrasm', __webpack_require__(202));
+	low.registerLanguage('axapta', __webpack_require__(203));
+	low.registerLanguage('bash', __webpack_require__(204));
+	low.registerLanguage('basic', __webpack_require__(205));
+	low.registerLanguage('brainfuck', __webpack_require__(206));
+	low.registerLanguage('cal', __webpack_require__(207));
+	low.registerLanguage('capnproto', __webpack_require__(208));
+	low.registerLanguage('ceylon', __webpack_require__(209));
+	low.registerLanguage('clojure', __webpack_require__(210));
+	low.registerLanguage('clojure-repl', __webpack_require__(211));
+	low.registerLanguage('cmake', __webpack_require__(212));
+	low.registerLanguage('coffeescript', __webpack_require__(213));
+	low.registerLanguage('cos', __webpack_require__(214));
+	low.registerLanguage('cpp', __webpack_require__(215));
+	low.registerLanguage('crmsh', __webpack_require__(216));
+	low.registerLanguage('crystal', __webpack_require__(217));
+	low.registerLanguage('cs', __webpack_require__(218));
+	low.registerLanguage('css', __webpack_require__(219));
+	low.registerLanguage('d', __webpack_require__(220));
+	low.registerLanguage('markdown', __webpack_require__(221));
+	low.registerLanguage('dart', __webpack_require__(222));
+	low.registerLanguage('delphi', __webpack_require__(223));
+	low.registerLanguage('diff', __webpack_require__(224));
+	low.registerLanguage('django', __webpack_require__(225));
+	low.registerLanguage('dns', __webpack_require__(226));
+	low.registerLanguage('dockerfile', __webpack_require__(227));
+	low.registerLanguage('dos', __webpack_require__(228));
+	low.registerLanguage('dts', __webpack_require__(229));
+	low.registerLanguage('dust', __webpack_require__(230));
+	low.registerLanguage('elixir', __webpack_require__(231));
+	low.registerLanguage('elm', __webpack_require__(232));
+	low.registerLanguage('ruby', __webpack_require__(233));
+	low.registerLanguage('erb', __webpack_require__(234));
+	low.registerLanguage('erlang-repl', __webpack_require__(235));
+	low.registerLanguage('erlang', __webpack_require__(236));
+	low.registerLanguage('fix', __webpack_require__(237));
+	low.registerLanguage('fortran', __webpack_require__(238));
+	low.registerLanguage('fsharp', __webpack_require__(239));
+	low.registerLanguage('gams', __webpack_require__(240));
+	low.registerLanguage('gauss', __webpack_require__(241));
+	low.registerLanguage('gcode', __webpack_require__(242));
+	low.registerLanguage('gherkin', __webpack_require__(243));
+	low.registerLanguage('glsl', __webpack_require__(244));
+	low.registerLanguage('go', __webpack_require__(245));
+	low.registerLanguage('golo', __webpack_require__(246));
+	low.registerLanguage('gradle', __webpack_require__(247));
+	low.registerLanguage('groovy', __webpack_require__(248));
+	low.registerLanguage('haml', __webpack_require__(249));
+	low.registerLanguage('handlebars', __webpack_require__(250));
+	low.registerLanguage('haskell', __webpack_require__(251));
+	low.registerLanguage('haxe', __webpack_require__(252));
+	low.registerLanguage('hsp', __webpack_require__(253));
+	low.registerLanguage('http', __webpack_require__(254));
+	low.registerLanguage('inform7', __webpack_require__(255));
+	low.registerLanguage('ini', __webpack_require__(256));
+	low.registerLanguage('irpf90', __webpack_require__(257));
+	low.registerLanguage('java', __webpack_require__(258));
+	low.registerLanguage('javascript', __webpack_require__(259));
+	low.registerLanguage('json', __webpack_require__(260));
+	low.registerLanguage('julia', __webpack_require__(261));
+	low.registerLanguage('kotlin', __webpack_require__(262));
+	low.registerLanguage('lasso', __webpack_require__(263));
+	low.registerLanguage('less', __webpack_require__(264));
+	low.registerLanguage('lisp', __webpack_require__(265));
+	low.registerLanguage('livecodeserver', __webpack_require__(266));
+	low.registerLanguage('livescript', __webpack_require__(267));
+	low.registerLanguage('lua', __webpack_require__(268));
+	low.registerLanguage('makefile', __webpack_require__(269));
+	low.registerLanguage('mathematica', __webpack_require__(270));
+	low.registerLanguage('matlab', __webpack_require__(271));
+	low.registerLanguage('mel', __webpack_require__(272));
+	low.registerLanguage('mercury', __webpack_require__(273));
+	low.registerLanguage('mipsasm', __webpack_require__(274));
+	low.registerLanguage('mizar', __webpack_require__(275));
+	low.registerLanguage('perl', __webpack_require__(276));
+	low.registerLanguage('mojolicious', __webpack_require__(277));
+	low.registerLanguage('monkey', __webpack_require__(278));
+	low.registerLanguage('nginx', __webpack_require__(279));
+	low.registerLanguage('nimrod', __webpack_require__(280));
+	low.registerLanguage('nix', __webpack_require__(281));
+	low.registerLanguage('nsis', __webpack_require__(282));
+	low.registerLanguage('objectivec', __webpack_require__(283));
+	low.registerLanguage('ocaml', __webpack_require__(284));
+	low.registerLanguage('openscad', __webpack_require__(285));
+	low.registerLanguage('oxygene', __webpack_require__(286));
+	low.registerLanguage('parser3', __webpack_require__(287));
+	low.registerLanguage('pf', __webpack_require__(288));
+	low.registerLanguage('php', __webpack_require__(289));
+	low.registerLanguage('powershell', __webpack_require__(290));
+	low.registerLanguage('processing', __webpack_require__(291));
+	low.registerLanguage('profile', __webpack_require__(292));
+	low.registerLanguage('prolog', __webpack_require__(293));
+	low.registerLanguage('protobuf', __webpack_require__(294));
+	low.registerLanguage('puppet', __webpack_require__(295));
+	low.registerLanguage('python', __webpack_require__(296));
+	low.registerLanguage('q', __webpack_require__(297));
+	low.registerLanguage('r', __webpack_require__(298));
+	low.registerLanguage('rib', __webpack_require__(299));
+	low.registerLanguage('roboconf', __webpack_require__(300));
+	low.registerLanguage('rsl', __webpack_require__(301));
+	low.registerLanguage('ruleslanguage', __webpack_require__(302));
+	low.registerLanguage('rust', __webpack_require__(303));
+	low.registerLanguage('scala', __webpack_require__(304));
+	low.registerLanguage('scheme', __webpack_require__(305));
+	low.registerLanguage('scilab', __webpack_require__(306));
+	low.registerLanguage('scss', __webpack_require__(307));
+	low.registerLanguage('smali', __webpack_require__(308));
+	low.registerLanguage('smalltalk', __webpack_require__(309));
+	low.registerLanguage('sml', __webpack_require__(310));
+	low.registerLanguage('sqf', __webpack_require__(311));
+	low.registerLanguage('sql', __webpack_require__(312));
+	low.registerLanguage('stan', __webpack_require__(313));
+	low.registerLanguage('stata', __webpack_require__(314));
+	low.registerLanguage('step21', __webpack_require__(315));
+	low.registerLanguage('stylus', __webpack_require__(316));
+	low.registerLanguage('swift', __webpack_require__(317));
+	low.registerLanguage('tcl', __webpack_require__(318));
+	low.registerLanguage('tex', __webpack_require__(319));
+	low.registerLanguage('thrift', __webpack_require__(320));
+	low.registerLanguage('tp', __webpack_require__(321));
+	low.registerLanguage('twig', __webpack_require__(322));
+	low.registerLanguage('typescript', __webpack_require__(323));
+	low.registerLanguage('vala', __webpack_require__(324));
+	low.registerLanguage('vbnet', __webpack_require__(325));
+	low.registerLanguage('vbscript', __webpack_require__(326));
+	low.registerLanguage('vbscript-html', __webpack_require__(327));
+	low.registerLanguage('verilog', __webpack_require__(328));
+	low.registerLanguage('vhdl', __webpack_require__(329));
+	low.registerLanguage('vim', __webpack_require__(330));
+	low.registerLanguage('x86asm', __webpack_require__(331));
+	low.registerLanguage('xl', __webpack_require__(332));
+	low.registerLanguage('xquery', __webpack_require__(333));
+	low.registerLanguage('yaml', __webpack_require__(334));
+	low.registerLanguage('zephir', __webpack_require__(335));
+	
+	/*
+	 * Expose.
+	 */
+	
+	module.exports = low;
+
+
+/***/ },
+/* 188 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -21728,7 +21898,7 @@
 	 * Dependencies.
 	 */
 	
-	var high = __webpack_require__(188);
+	var high = __webpack_require__(189);
 	
 	/*
 	 * Methods.
@@ -22620,7 +22790,7 @@
 
 
 /***/ },
-/* 188 */
+/* 189 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*
@@ -22630,19 +22800,23 @@
 	
 	(function(factory) {
 	
+	  // Find the global object for export to both the browser and web workers.
+	  var globalObject = typeof window == 'object' && window ||
+	                     typeof self == 'object' && self;
+	
 	  // Setup highlight.js for different environments. First is Node.js or
 	  // CommonJS.
 	  if(true) {
 	    factory(exports);
-	  } else {
+	  } else if(globalObject) {
 	    // Export hljs globally even when using AMD for cases when this script
 	    // is loaded with others that may still expect a global hljs.
-	    self.hljs = factory({});
+	    globalObject.hljs = factory({});
 	
 	    // Finally register the global hljs with AMD.
 	    if(typeof define === 'function' && define.amd) {
-	      define('hljs', [], function() {
-	        return self.hljs;
+	      define([], function() {
+	        return globalObject.hljs;
 	      });
 	    }
 	  }
@@ -22674,7 +22848,7 @@
 	
 	    classes += block.parentNode ? block.parentNode.className : '';
 	
-	    // language-* takes precedence over non-prefixed class names
+	    // language-* takes precedence over non-prefixed class names.
 	    match = (/\blang(?:uage)?-([\w-]+)\b/i).exec(classes);
 	    if (match) {
 	      return getLanguage(match[1]) ? match[1] : 'no-highlight';
@@ -22846,7 +23020,7 @@
 	        }
 	        mode.keywords = compiled_keywords;
 	      }
-	      mode.lexemesRe = langRe(mode.lexemes || /\b\w+\b/, true);
+	      mode.lexemesRe = langRe(mode.lexemes || /\w+/, true);
 	
 	      if (parent) {
 	        if (mode.beginKeywords) {
@@ -22994,35 +23168,37 @@
 	    }
 	
 	    function processBuffer() {
-	      return top.subLanguage !== undefined ? processSubLanguage() : processKeywords();
+	      result += (top.subLanguage !== undefined ? processSubLanguage() : processKeywords());
+	      mode_buffer = '';
 	    }
 	
 	    function startNewMode(mode, lexeme) {
-	      var markup = mode.className? buildSpan(mode.className, '', true): '';
-	      if (mode.returnBegin) {
-	        result += markup;
-	        mode_buffer = '';
-	      } else if (mode.excludeBegin) {
-	        result += escape(lexeme) + markup;
-	        mode_buffer = '';
-	      } else {
-	        result += markup;
-	        mode_buffer = lexeme;
-	      }
+	      result += mode.className? buildSpan(mode.className, '', true): '';
 	      top = Object.create(mode, {parent: {value: top}});
 	    }
 	
 	    function processLexeme(buffer, lexeme) {
 	
 	      mode_buffer += buffer;
+	
 	      if (lexeme === undefined) {
-	        result += processBuffer();
+	        processBuffer();
 	        return 0;
 	      }
 	
 	      var new_mode = subMode(lexeme, top);
 	      if (new_mode) {
-	        result += processBuffer();
+	        if (new_mode.skip) {
+	          mode_buffer += lexeme;
+	        } else {
+	          if (new_mode.excludeBegin) {
+	            mode_buffer += lexeme;
+	          }
+	          processBuffer();
+	          if (!new_mode.returnBegin && !new_mode.excludeBegin) {
+	            mode_buffer = lexeme;
+	          }
+	        }
 	        startNewMode(new_mode, lexeme);
 	        return new_mode.returnBegin ? 0 : lexeme.length;
 	      }
@@ -23030,21 +23206,26 @@
 	      var end_mode = endOfMode(top, lexeme);
 	      if (end_mode) {
 	        var origin = top;
-	        if (!(origin.returnEnd || origin.excludeEnd)) {
+	        if (origin.skip) {
 	          mode_buffer += lexeme;
+	        } else {
+	          if (!(origin.returnEnd || origin.excludeEnd)) {
+	            mode_buffer += lexeme;
+	          }
+	          processBuffer();
+	          if (origin.excludeEnd) {
+	            mode_buffer = lexeme;
+	          }
 	        }
-	        result += processBuffer();
 	        do {
 	          if (top.className) {
 	            result += '</span>';
 	          }
-	          relevance += top.relevance;
+	          if (!top.skip) {
+	            relevance += top.relevance;
+	          }
 	          top = top.parent;
 	        } while (top != end_mode.parent);
-	        if (origin.excludeEnd) {
-	          result += escape(lexeme);
-	        }
-	        mode_buffer = '';
 	        if (end_mode.starts) {
 	          startNewMode(end_mode.starts, '');
 	        }
@@ -23131,10 +23312,7 @@
 	      value: escape(text)
 	    };
 	    var second_best = result;
-	    languageSubset.forEach(function(name) {
-	      if (!getLanguage(name)) {
-	        return;
-	      }
+	    languageSubset.filter(getLanguage).forEach(function(name) {
 	      var current = highlight(name, text, false);
 	      current.language = name;
 	      if (current.relevance > second_best.relevance) {
@@ -23234,7 +23412,7 @@
 	  };
 	
 	  /*
-	  Updates highlight.js global options with values passed in the form of an object
+	  Updates highlight.js global options with values passed in the form of an object.
 	  */
 	  function configure(user_options) {
 	    options = inherit(options, user_options);
@@ -23318,7 +23496,7 @@
 	    contains: [hljs.BACKSLASH_ESCAPE]
 	  };
 	  hljs.PHRASAL_WORDS_MODE = {
-	    begin: /\b(a|an|the|are|I|I'm|isn't|don't|doesn't|won't|but|just|should|pretty|simply|enough|gonna|going|wtf|so|such|will|you|your|like)\b/
+	    begin: /\b(a|an|the|are|I'm|isn't|don't|doesn't|won't|but|just|should|pretty|simply|enough|gonna|going|wtf|so|such|will|you|your|like)\b/
 	  };
 	  hljs.COMMENT = function (begin, end, inherits) {
 	    var mode = hljs.inherit(
@@ -23391,7585 +23569,18 @@
 	    begin: hljs.UNDERSCORE_IDENT_RE,
 	    relevance: 0
 	  };
+	  hljs.METHOD_GUARD = {
+	    // excludes method names from keyword processing
+	    begin: '\\.\\s*' + hljs.UNDERSCORE_IDENT_RE,
+	    relevance: 0
+	  };
 	
 	  return hljs;
 	}));
 
 
 /***/ },
-/* 189 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var map = {
-		"./agate": 190,
-		"./agate.js": 190,
-		"./androidstudio": 191,
-		"./androidstudio.js": 191,
-		"./arduino-light": 192,
-		"./arduino-light.js": 192,
-		"./arta": 193,
-		"./arta.js": 193,
-		"./ascetic": 194,
-		"./ascetic.js": 194,
-		"./atelier-cave-dark": 195,
-		"./atelier-cave-dark.js": 195,
-		"./atelier-cave-light": 196,
-		"./atelier-cave-light.js": 196,
-		"./atelier-dune-dark": 197,
-		"./atelier-dune-dark.js": 197,
-		"./atelier-dune-light": 198,
-		"./atelier-dune-light.js": 198,
-		"./atelier-estuary-dark": 199,
-		"./atelier-estuary-dark.js": 199,
-		"./atelier-estuary-light": 200,
-		"./atelier-estuary-light.js": 200,
-		"./atelier-forest-dark": 201,
-		"./atelier-forest-dark.js": 201,
-		"./atelier-forest-light": 202,
-		"./atelier-forest-light.js": 202,
-		"./atelier-heath-dark": 203,
-		"./atelier-heath-dark.js": 203,
-		"./atelier-heath-light": 204,
-		"./atelier-heath-light.js": 204,
-		"./atelier-lakeside-dark": 205,
-		"./atelier-lakeside-dark.js": 205,
-		"./atelier-lakeside-light": 206,
-		"./atelier-lakeside-light.js": 206,
-		"./atelier-plateau-dark": 207,
-		"./atelier-plateau-dark.js": 207,
-		"./atelier-plateau-light": 208,
-		"./atelier-plateau-light.js": 208,
-		"./atelier-savanna-dark": 209,
-		"./atelier-savanna-dark.js": 209,
-		"./atelier-savanna-light": 210,
-		"./atelier-savanna-light.js": 210,
-		"./atelier-seaside-dark": 211,
-		"./atelier-seaside-dark.js": 211,
-		"./atelier-seaside-light": 212,
-		"./atelier-seaside-light.js": 212,
-		"./atelier-sulphurpool-dark": 213,
-		"./atelier-sulphurpool-dark.js": 213,
-		"./atelier-sulphurpool-light": 214,
-		"./atelier-sulphurpool-light.js": 214,
-		"./brown-paper": 215,
-		"./brown-paper.js": 215,
-		"./codepen-embed": 216,
-		"./codepen-embed.js": 216,
-		"./color-brewer": 217,
-		"./color-brewer.js": 217,
-		"./dark": 218,
-		"./dark.js": 218,
-		"./darkula": 219,
-		"./darkula.js": 219,
-		"./default": 220,
-		"./default.js": 220,
-		"./docco": 221,
-		"./docco.js": 221,
-		"./far": 222,
-		"./far.js": 222,
-		"./foundation": 223,
-		"./foundation.js": 223,
-		"./github": 224,
-		"./github-gist": 225,
-		"./github-gist.js": 225,
-		"./github.js": 224,
-		"./googlecode": 226,
-		"./googlecode.js": 226,
-		"./grayscale": 227,
-		"./grayscale.js": 227,
-		"./hopscotch": 228,
-		"./hopscotch.js": 228,
-		"./hybrid": 229,
-		"./hybrid.js": 229,
-		"./idea": 230,
-		"./idea.js": 230,
-		"./ir-black": 231,
-		"./ir-black.js": 231,
-		"./kimbie.dark": 232,
-		"./kimbie.dark.js": 232,
-		"./kimbie.light": 233,
-		"./kimbie.light.js": 233,
-		"./magula": 234,
-		"./magula.js": 234,
-		"./mono-blue": 235,
-		"./mono-blue.js": 235,
-		"./monokai": 236,
-		"./monokai-sublime": 237,
-		"./monokai-sublime.js": 237,
-		"./monokai.js": 236,
-		"./obsidian": 238,
-		"./obsidian.js": 238,
-		"./paraiso-dark": 239,
-		"./paraiso-dark.js": 239,
-		"./paraiso-light": 240,
-		"./paraiso-light.js": 240,
-		"./pojoaque": 241,
-		"./pojoaque.js": 241,
-		"./railscasts": 242,
-		"./railscasts.js": 242,
-		"./rainbow": 243,
-		"./rainbow.js": 243,
-		"./school-book": 244,
-		"./school-book.js": 244,
-		"./solarized-dark": 245,
-		"./solarized-dark.js": 245,
-		"./solarized-light": 246,
-		"./solarized-light.js": 246,
-		"./sunburst": 247,
-		"./sunburst.js": 247,
-		"./tomorrow": 248,
-		"./tomorrow-night": 249,
-		"./tomorrow-night-blue": 250,
-		"./tomorrow-night-blue.js": 250,
-		"./tomorrow-night-bright": 251,
-		"./tomorrow-night-bright.js": 251,
-		"./tomorrow-night-eighties": 252,
-		"./tomorrow-night-eighties.js": 252,
-		"./tomorrow-night.js": 249,
-		"./tomorrow.js": 248,
-		"./vs": 253,
-		"./vs.js": 253,
-		"./xcode": 254,
-		"./xcode.js": 254,
-		"./zenburn": 255,
-		"./zenburn.js": 255
-	};
-	function webpackContext(req) {
-		return __webpack_require__(webpackContextResolve(req));
-	};
-	function webpackContextResolve(req) {
-		return map[req] || (function() { throw new Error("Cannot find module '" + req + "'.") }());
-	};
-	webpackContext.keys = function webpackContextKeys() {
-		return Object.keys(map);
-	};
-	webpackContext.resolve = webpackContextResolve;
-	module.exports = webpackContext;
-	webpackContext.id = 189;
-
-
-/***/ },
 /* 190 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#ffa"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "background": "#333",
-	        "color": "white"
-	    },
-	    "hljs-string": {
-	        "color": "#a2fca2"
-	    },
-	    "hljs-regexp": {
-	        "color": "#c6b4f0"
-	    },
-	    "hljs-meta": {
-	        "color": "#fc9b9b"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#ffa"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-type": {
-	        "color": "#ffa"
-	    },
-	    "hljs-section": {
-	        "color": "#ffa"
-	    },
-	    "hljs-deletion": {
-	        "backgroundColor": "#fc9b9b",
-	        "color": "#333"
-	    },
-	    "hljs-addition": {
-	        "backgroundColor": "#a2fca2",
-	        "color": "#333"
-	    },
-	    "hljs-name": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-variable": {
-	        "color": "#ade5fc"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#fcc28c"
-	    },
-	    "hljs-bullet": {
-	        "color": "#d36363"
-	    },
-	    "hljs-code": {
-	        "color": "#888"
-	    },
-	    "hljs-number": {
-	        "color": "#d36363"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#ade5fc"
-	    },
-	    "hljs-symbol": {
-	        "color": "#d36363"
-	    },
-	    "hljs-attribute": {
-	        "color": "#ffa"
-	    },
-	    "hljs-tag": {
-	        "color": "#62c8f3"
-	    },
-	    "hljs-keyword": {
-	        "color": "#fcc28c"
-	    },
-	    "hljs-literal": {
-	        "color": "#fcc28c"
-	    },
-	    "hljs-quote": {
-	        "color": "#ffa"
-	    },
-	    "hljs-comment": {
-	        "color": "#888"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#ade5fc"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#ade5fc"
-	    },
-	    "hljs-built_in": {
-	        "color": "#ffa"
-	    },
-	    "hljs-link": {
-	        "color": "#c6b4f0"
-	    }
-	};
-
-/***/ },
-/* 191 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#ffc66d"
-	    },
-	    "hljs": {
-	        "color": "#a9b7c6",
-	        "background": "#282b2e",
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em"
-	    },
-	    "hljs-string": {
-	        "color": "#6A8759"
-	    },
-	    "hljs-meta": {
-	        "color": "#bbb529"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-type": {
-	        "color": "#ffc66d"
-	    },
-	    "hljs-section": {
-	        "color": "#ffc66d"
-	    },
-	    "hljs-deletion": {
-	        "color": "#cc7832"
-	    },
-	    "hljs-addition": {
-	        "color": "#6A8759"
-	    },
-	    "hljs-bullet": {
-	        "color": "#6897BB"
-	    },
-	    "hljs-variable": {
-	        "color": "#629755"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#cc7832"
-	    },
-	    "hljs-name": {
-	        "color": "#e8bf6a"
-	    },
-	    "hljs-number": {
-	        "color": "#6897BB"
-	    },
-	    "hljs-symbol": {
-	        "color": "#6897BB"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#e8bf6a"
-	    },
-	    "hljs-attribute": {
-	        "color": "#6A8759"
-	    },
-	    "hljs-keyword": {
-	        "color": "#cc7832"
-	    },
-	    "hljs-literal": {
-	        "color": "#6897BB"
-	    },
-	    "hljs-comment": {
-	        "color": "#808080"
-	    },
-	    "hljs-quote": {
-	        "color": "#808080"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#e8bf6a"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#629755"
-	    },
-	    "hljs-link": {
-	        "color": "#629755"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 192 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-selector-attr": {
-	        "color": "#00979D"
-	    },
-	    "hljs-title": {
-	        "color": "#880000",
-	        "fontWeight": "bold"
-	    },
-	    "hljs": {
-	        "color": "#434f54"
-	    },
-	    "hljs-regexp": {
-	        "color": "#00979D"
-	    },
-	    "hljs-string": {
-	        "color": "#005C5F"
-	    },
-	    "hljs-template-tag": {
-	        "color": "#005C5F"
-	    },
-	    "hljs-meta": {
-	        "color": "#434f54"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-type": {
-	        "color": "#005C5F"
-	    },
-	    "hljs-section": {
-	        "color": "#880000",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-deletion": {
-	        "color": "#005C5F"
-	    },
-	    "hljs-subst": {
-	        "color": "#434f54"
-	    },
-	    "hljs-addition": {
-	        "color": "#D35400"
-	    },
-	    "hljs-name": {
-	        "color": "#00979D"
-	    },
-	    "hljs-bullet": {
-	        "color": "#D35400"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#00979D"
-	    },
-	    "hljs-meta-keyword": {
-	        "color": "#728E00"
-	    },
-	    "hljs-code": {
-	        "color": "#D35400"
-	    },
-	    "hljs-variable": {
-	        "color": "#00979D"
-	    },
-	    "hljs-symbol": {
-	        "color": "#00979D"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#005C5F"
-	    },
-	    "hljs-attribute": {
-	        "color": "#00979D"
-	    },
-	    "hljs-selector-pseudo": {
-	        "color": "#00979D"
-	    },
-	    "hljs-keyword": {
-	        "color": "#00979D"
-	    },
-	    "hljs-literal": {
-	        "color": "#D35400"
-	    },
-	    "hljs-quote": {
-	        "color": "#005C5F"
-	    },
-	    "hljs-comment": {
-	        "color": "rgba(149,165,166,.8)"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#005C5F"
-	    },
-	    "hljs-function": {
-	        "color": "#728E00"
-	    },
-	    "hljs-doctag": {
-	        "color": "#00979D"
-	    },
-	    "hljs-built_in": {
-	        "color": "#D35400"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#00979D"
-	    },
-	    "hljs-link": {
-	        "color": "#00979D"
-	    },
-	    "hljs-number": {
-	        "color": "#8A7B52"
-	    }
-	};
-
-/***/ },
-/* 193 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#bb1166"
-	    },
-	    "hljs": {
-	        "color": "#aaa"
-	    },
-	    "hljs-string": {
-	        "color": "#ffcc33"
-	    },
-	    "hljs-meta": {
-	        "color": "#444"
-	    },
-	    "hljs-template-tag": {
-	        "color": "#bb1166"
-	    },
-	    "hljs-regexp": {
-	        "color": "#ffcc33"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#32aaee"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-type": {
-	        "color": "#32aaee"
-	    },
-	    "hljs-section": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-deletion": {
-	        "color": "#bb1166"
-	    },
-	    "hljs-subst": {
-	        "color": "#aaa"
-	    },
-	    "hljs-addition": {
-	        "color": "#00cc66"
-	    },
-	    "hljs-bullet": {
-	        "color": "#ffcc33"
-	    },
-	    "hljs-name": {
-	        "color": "#6644aa"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#6644aa"
-	    },
-	    "hljs-variable": {
-	        "color": "#bb1166"
-	    },
-	    "hljs-number": {
-	        "color": "#00cc66"
-	    },
-	    "hljs-symbol": {
-	        "color": "#ffcc33"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#6644aa"
-	    },
-	    "hljs-attribute": {
-	        "color": "#32aaee"
-	    },
-	    "hljs-keyword": {
-	        "color": "#6644aa"
-	    },
-	    "hljs-literal": {
-	        "color": "#32aaee"
-	    },
-	    "hljs-comment": {
-	        "color": "#444"
-	    },
-	    "hljs-quote": {
-	        "color": "#444"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#6644aa"
-	    },
-	    "hljs-doctag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-built_in": {
-	        "color": "#32aaee"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#32aaee"
-	    },
-	    "hljs-link": {
-	        "color": "#32aaee"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    }
-	};
-
-/***/ },
-/* 194 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "background": "white",
-	        "color": "black"
-	    },
-	    "hljs-string": {
-	        "color": "#888"
-	    },
-	    "hljs-variable": {
-	        "color": "#888"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#888"
-	    },
-	    "hljs-symbol": {
-	        "color": "#888"
-	    },
-	    "hljs-bullet": {
-	        "color": "#888"
-	    },
-	    "hljs-section": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-addition": {
-	        "color": "#888"
-	    },
-	    "hljs-attribute": {
-	        "color": "#888"
-	    },
-	    "hljs-link": {
-	        "color": "#888"
-	    },
-	    "hljs-comment": {
-	        "color": "#ccc"
-	    },
-	    "hljs-quote": {
-	        "color": "#ccc"
-	    },
-	    "hljs-meta": {
-	        "color": "#ccc"
-	    },
-	    "hljs-deletion": {
-	        "color": "#ccc"
-	    },
-	    "hljs-keyword": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-selector-tag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-name": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-type": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    }
-	};
-
-/***/ },
-/* 195 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#576ddb"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#19171c",
-	        "color": "#8b8792",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#be4678"
-	    },
-	    "hljs-meta": {
-	        "color": "#aa573c"
-	    },
-	    "hljs-string": {
-	        "color": "#2a9292"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#aa573c"
-	    },
-	    "hljs-type": {
-	        "color": "#aa573c"
-	    },
-	    "hljs-section": {
-	        "color": "#576ddb"
-	    },
-	    "hljs-deletion": {
-	        "backgroundColor": "#be4678"
-	    },
-	    "hljs-addition": {
-	        "backgroundColor": "#2a9292"
-	    },
-	    "hljs-name": {
-	        "color": "#be4678"
-	    },
-	    "hljs-variable": {
-	        "color": "#be4678"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#955ae7"
-	    },
-	    "hljs-bullet": {
-	        "color": "#2a9292"
-	    },
-	    "hljs-params": {
-	        "color": "#aa573c"
-	    },
-	    "hljs-number": {
-	        "color": "#aa573c"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#be4678"
-	    },
-	    "hljs-symbol": {
-	        "color": "#2a9292"
-	    },
-	    "hljs-attribute": {
-	        "color": "#be4678"
-	    },
-	    "hljs-tag": {
-	        "color": "#be4678"
-	    },
-	    "hljs-keyword": {
-	        "color": "#955ae7"
-	    },
-	    "hljs-literal": {
-	        "color": "#aa573c"
-	    },
-	    "hljs-comment": {
-	        "color": "#7e7887"
-	    },
-	    "hljs-quote": {
-	        "color": "#7e7887"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#be4678"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#be4678"
-	    },
-	    "hljs-built_in": {
-	        "color": "#aa573c"
-	    },
-	    "hljs-link": {
-	        "color": "#be4678"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 196 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#576ddb"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#efecf4",
-	        "color": "#585260",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#be4678"
-	    },
-	    "hljs-meta": {
-	        "color": "#aa573c"
-	    },
-	    "hljs-string": {
-	        "color": "#2a9292"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#aa573c"
-	    },
-	    "hljs-type": {
-	        "color": "#aa573c"
-	    },
-	    "hljs-section": {
-	        "color": "#576ddb"
-	    },
-	    "hljs-deletion": {
-	        "backgroundColor": "#be4678"
-	    },
-	    "hljs-addition": {
-	        "backgroundColor": "#2a9292"
-	    },
-	    "hljs-name": {
-	        "color": "#be4678"
-	    },
-	    "hljs-variable": {
-	        "color": "#be4678"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#955ae7"
-	    },
-	    "hljs-bullet": {
-	        "color": "#2a9292"
-	    },
-	    "hljs-params": {
-	        "color": "#aa573c"
-	    },
-	    "hljs-number": {
-	        "color": "#aa573c"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#be4678"
-	    },
-	    "hljs-symbol": {
-	        "color": "#2a9292"
-	    },
-	    "hljs-attribute": {
-	        "color": "#be4678"
-	    },
-	    "hljs-tag": {
-	        "color": "#be4678"
-	    },
-	    "hljs-keyword": {
-	        "color": "#955ae7"
-	    },
-	    "hljs-literal": {
-	        "color": "#aa573c"
-	    },
-	    "hljs-comment": {
-	        "color": "#655f6d"
-	    },
-	    "hljs-quote": {
-	        "color": "#655f6d"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#be4678"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#be4678"
-	    },
-	    "hljs-built_in": {
-	        "color": "#aa573c"
-	    },
-	    "hljs-link": {
-	        "color": "#be4678"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 197 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#6684e1"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#20201d",
-	        "color": "#a6a28c",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#d73737"
-	    },
-	    "hljs-meta": {
-	        "color": "#b65611"
-	    },
-	    "hljs-string": {
-	        "color": "#60ac39"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#b65611"
-	    },
-	    "hljs-type": {
-	        "color": "#b65611"
-	    },
-	    "hljs-section": {
-	        "color": "#6684e1"
-	    },
-	    "hljs-name": {
-	        "color": "#d73737"
-	    },
-	    "hljs-variable": {
-	        "color": "#d73737"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#b854d4"
-	    },
-	    "hljs-bullet": {
-	        "color": "#60ac39"
-	    },
-	    "hljs-params": {
-	        "color": "#b65611"
-	    },
-	    "hljs-number": {
-	        "color": "#b65611"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#d73737"
-	    },
-	    "hljs-symbol": {
-	        "color": "#60ac39"
-	    },
-	    "hljs-attribute": {
-	        "color": "#d73737"
-	    },
-	    "hljs-tag": {
-	        "color": "#d73737"
-	    },
-	    "hljs-keyword": {
-	        "color": "#b854d4"
-	    },
-	    "hljs-literal": {
-	        "color": "#b65611"
-	    },
-	    "hljs-comment": {
-	        "color": "#999580"
-	    },
-	    "hljs-quote": {
-	        "color": "#999580"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#d73737"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#d73737"
-	    },
-	    "hljs-built_in": {
-	        "color": "#b65611"
-	    },
-	    "hljs-link": {
-	        "color": "#d73737"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 198 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#6684e1"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#fefbec",
-	        "color": "#6e6b5e",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#d73737"
-	    },
-	    "hljs-meta": {
-	        "color": "#b65611"
-	    },
-	    "hljs-string": {
-	        "color": "#60ac39"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#b65611"
-	    },
-	    "hljs-type": {
-	        "color": "#b65611"
-	    },
-	    "hljs-section": {
-	        "color": "#6684e1"
-	    },
-	    "hljs-name": {
-	        "color": "#d73737"
-	    },
-	    "hljs-variable": {
-	        "color": "#d73737"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#b854d4"
-	    },
-	    "hljs-bullet": {
-	        "color": "#60ac39"
-	    },
-	    "hljs-params": {
-	        "color": "#b65611"
-	    },
-	    "hljs-number": {
-	        "color": "#b65611"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#d73737"
-	    },
-	    "hljs-symbol": {
-	        "color": "#60ac39"
-	    },
-	    "hljs-attribute": {
-	        "color": "#d73737"
-	    },
-	    "hljs-tag": {
-	        "color": "#d73737"
-	    },
-	    "hljs-keyword": {
-	        "color": "#b854d4"
-	    },
-	    "hljs-literal": {
-	        "color": "#b65611"
-	    },
-	    "hljs-comment": {
-	        "color": "#7d7a68"
-	    },
-	    "hljs-quote": {
-	        "color": "#7d7a68"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#d73737"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#d73737"
-	    },
-	    "hljs-built_in": {
-	        "color": "#b65611"
-	    },
-	    "hljs-link": {
-	        "color": "#d73737"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 199 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#36a166"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#22221b",
-	        "color": "#929181",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-meta": {
-	        "color": "#ae7313"
-	    },
-	    "hljs-string": {
-	        "color": "#7d9726"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#ae7313"
-	    },
-	    "hljs-type": {
-	        "color": "#ae7313"
-	    },
-	    "hljs-section": {
-	        "color": "#36a166"
-	    },
-	    "hljs-deletion": {
-	        "backgroundColor": "#ba6236"
-	    },
-	    "hljs-addition": {
-	        "backgroundColor": "#7d9726"
-	    },
-	    "hljs-name": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-variable": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#5f9182"
-	    },
-	    "hljs-bullet": {
-	        "color": "#7d9726"
-	    },
-	    "hljs-params": {
-	        "color": "#ae7313"
-	    },
-	    "hljs-number": {
-	        "color": "#ae7313"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-symbol": {
-	        "color": "#7d9726"
-	    },
-	    "hljs-attribute": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-tag": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-keyword": {
-	        "color": "#5f9182"
-	    },
-	    "hljs-literal": {
-	        "color": "#ae7313"
-	    },
-	    "hljs-comment": {
-	        "color": "#878573"
-	    },
-	    "hljs-quote": {
-	        "color": "#878573"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-built_in": {
-	        "color": "#ae7313"
-	    },
-	    "hljs-link": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 200 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#36a166"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#f4f3ec",
-	        "color": "#5f5e4e",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-meta": {
-	        "color": "#ae7313"
-	    },
-	    "hljs-string": {
-	        "color": "#7d9726"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#ae7313"
-	    },
-	    "hljs-type": {
-	        "color": "#ae7313"
-	    },
-	    "hljs-section": {
-	        "color": "#36a166"
-	    },
-	    "hljs-deletion": {
-	        "backgroundColor": "#ba6236"
-	    },
-	    "hljs-addition": {
-	        "backgroundColor": "#7d9726"
-	    },
-	    "hljs-name": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-variable": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#5f9182"
-	    },
-	    "hljs-bullet": {
-	        "color": "#7d9726"
-	    },
-	    "hljs-params": {
-	        "color": "#ae7313"
-	    },
-	    "hljs-number": {
-	        "color": "#ae7313"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-symbol": {
-	        "color": "#7d9726"
-	    },
-	    "hljs-attribute": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-tag": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-keyword": {
-	        "color": "#5f9182"
-	    },
-	    "hljs-literal": {
-	        "color": "#ae7313"
-	    },
-	    "hljs-comment": {
-	        "color": "#6c6b5a"
-	    },
-	    "hljs-quote": {
-	        "color": "#6c6b5a"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-built_in": {
-	        "color": "#ae7313"
-	    },
-	    "hljs-link": {
-	        "color": "#ba6236"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 201 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#407ee7"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#1b1918",
-	        "color": "#a8a19f",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-meta": {
-	        "color": "#df5320"
-	    },
-	    "hljs-string": {
-	        "color": "#7b9726"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#df5320"
-	    },
-	    "hljs-type": {
-	        "color": "#df5320"
-	    },
-	    "hljs-section": {
-	        "color": "#407ee7"
-	    },
-	    "hljs-name": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-variable": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#6666ea"
-	    },
-	    "hljs-bullet": {
-	        "color": "#7b9726"
-	    },
-	    "hljs-params": {
-	        "color": "#df5320"
-	    },
-	    "hljs-number": {
-	        "color": "#df5320"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-symbol": {
-	        "color": "#7b9726"
-	    },
-	    "hljs-attribute": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-tag": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-keyword": {
-	        "color": "#6666ea"
-	    },
-	    "hljs-literal": {
-	        "color": "#df5320"
-	    },
-	    "hljs-comment": {
-	        "color": "#9c9491"
-	    },
-	    "hljs-quote": {
-	        "color": "#9c9491"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-built_in": {
-	        "color": "#df5320"
-	    },
-	    "hljs-link": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 202 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#407ee7"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#f1efee",
-	        "color": "#68615e",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-meta": {
-	        "color": "#df5320"
-	    },
-	    "hljs-string": {
-	        "color": "#7b9726"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#df5320"
-	    },
-	    "hljs-type": {
-	        "color": "#df5320"
-	    },
-	    "hljs-section": {
-	        "color": "#407ee7"
-	    },
-	    "hljs-name": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-variable": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#6666ea"
-	    },
-	    "hljs-bullet": {
-	        "color": "#7b9726"
-	    },
-	    "hljs-params": {
-	        "color": "#df5320"
-	    },
-	    "hljs-number": {
-	        "color": "#df5320"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-symbol": {
-	        "color": "#7b9726"
-	    },
-	    "hljs-attribute": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-tag": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-keyword": {
-	        "color": "#6666ea"
-	    },
-	    "hljs-literal": {
-	        "color": "#df5320"
-	    },
-	    "hljs-comment": {
-	        "color": "#766e6b"
-	    },
-	    "hljs-quote": {
-	        "color": "#766e6b"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-built_in": {
-	        "color": "#df5320"
-	    },
-	    "hljs-link": {
-	        "color": "#f22c40"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 203 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#516aec"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#1b181b",
-	        "color": "#ab9bab",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-meta": {
-	        "color": "#a65926"
-	    },
-	    "hljs-string": {
-	        "color": "#918b3b"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#a65926"
-	    },
-	    "hljs-type": {
-	        "color": "#a65926"
-	    },
-	    "hljs-section": {
-	        "color": "#516aec"
-	    },
-	    "hljs-name": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-variable": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#7b59c0"
-	    },
-	    "hljs-bullet": {
-	        "color": "#918b3b"
-	    },
-	    "hljs-params": {
-	        "color": "#a65926"
-	    },
-	    "hljs-number": {
-	        "color": "#a65926"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-symbol": {
-	        "color": "#918b3b"
-	    },
-	    "hljs-attribute": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-tag": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-keyword": {
-	        "color": "#7b59c0"
-	    },
-	    "hljs-literal": {
-	        "color": "#a65926"
-	    },
-	    "hljs-comment": {
-	        "color": "#9e8f9e"
-	    },
-	    "hljs-quote": {
-	        "color": "#9e8f9e"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-built_in": {
-	        "color": "#a65926"
-	    },
-	    "hljs-link": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 204 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#516aec"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#f7f3f7",
-	        "color": "#695d69",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-meta": {
-	        "color": "#a65926"
-	    },
-	    "hljs-string": {
-	        "color": "#918b3b"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#a65926"
-	    },
-	    "hljs-type": {
-	        "color": "#a65926"
-	    },
-	    "hljs-section": {
-	        "color": "#516aec"
-	    },
-	    "hljs-name": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-variable": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#7b59c0"
-	    },
-	    "hljs-bullet": {
-	        "color": "#918b3b"
-	    },
-	    "hljs-params": {
-	        "color": "#a65926"
-	    },
-	    "hljs-number": {
-	        "color": "#a65926"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-symbol": {
-	        "color": "#918b3b"
-	    },
-	    "hljs-attribute": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-tag": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-keyword": {
-	        "color": "#7b59c0"
-	    },
-	    "hljs-literal": {
-	        "color": "#a65926"
-	    },
-	    "hljs-comment": {
-	        "color": "#776977"
-	    },
-	    "hljs-quote": {
-	        "color": "#776977"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-built_in": {
-	        "color": "#a65926"
-	    },
-	    "hljs-link": {
-	        "color": "#ca402b"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 205 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#257fad"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#161b1d",
-	        "color": "#7ea2b4",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-meta": {
-	        "color": "#935c25"
-	    },
-	    "hljs-string": {
-	        "color": "#568c3b"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#935c25"
-	    },
-	    "hljs-type": {
-	        "color": "#935c25"
-	    },
-	    "hljs-section": {
-	        "color": "#257fad"
-	    },
-	    "hljs-name": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-variable": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#6b6bb8"
-	    },
-	    "hljs-bullet": {
-	        "color": "#568c3b"
-	    },
-	    "hljs-params": {
-	        "color": "#935c25"
-	    },
-	    "hljs-number": {
-	        "color": "#935c25"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-symbol": {
-	        "color": "#568c3b"
-	    },
-	    "hljs-attribute": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-tag": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-keyword": {
-	        "color": "#6b6bb8"
-	    },
-	    "hljs-literal": {
-	        "color": "#935c25"
-	    },
-	    "hljs-comment": {
-	        "color": "#7195a8"
-	    },
-	    "hljs-quote": {
-	        "color": "#7195a8"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-built_in": {
-	        "color": "#935c25"
-	    },
-	    "hljs-link": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 206 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#257fad"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#ebf8ff",
-	        "color": "#516d7b",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-meta": {
-	        "color": "#935c25"
-	    },
-	    "hljs-string": {
-	        "color": "#568c3b"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#935c25"
-	    },
-	    "hljs-type": {
-	        "color": "#935c25"
-	    },
-	    "hljs-section": {
-	        "color": "#257fad"
-	    },
-	    "hljs-name": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-variable": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#6b6bb8"
-	    },
-	    "hljs-bullet": {
-	        "color": "#568c3b"
-	    },
-	    "hljs-params": {
-	        "color": "#935c25"
-	    },
-	    "hljs-number": {
-	        "color": "#935c25"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-symbol": {
-	        "color": "#568c3b"
-	    },
-	    "hljs-attribute": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-tag": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-keyword": {
-	        "color": "#6b6bb8"
-	    },
-	    "hljs-literal": {
-	        "color": "#935c25"
-	    },
-	    "hljs-comment": {
-	        "color": "#5a7b8c"
-	    },
-	    "hljs-quote": {
-	        "color": "#5a7b8c"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-built_in": {
-	        "color": "#935c25"
-	    },
-	    "hljs-link": {
-	        "color": "#d22d72"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 207 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#7272ca"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#1b1818",
-	        "color": "#8a8585",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-meta": {
-	        "color": "#b45a3c"
-	    },
-	    "hljs-string": {
-	        "color": "#4b8b8b"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#b45a3c"
-	    },
-	    "hljs-type": {
-	        "color": "#b45a3c"
-	    },
-	    "hljs-section": {
-	        "color": "#7272ca"
-	    },
-	    "hljs-deletion": {
-	        "backgroundColor": "#ca4949"
-	    },
-	    "hljs-addition": {
-	        "backgroundColor": "#4b8b8b"
-	    },
-	    "hljs-name": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-variable": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#8464c4"
-	    },
-	    "hljs-bullet": {
-	        "color": "#4b8b8b"
-	    },
-	    "hljs-params": {
-	        "color": "#b45a3c"
-	    },
-	    "hljs-number": {
-	        "color": "#b45a3c"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-symbol": {
-	        "color": "#4b8b8b"
-	    },
-	    "hljs-attribute": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-tag": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-keyword": {
-	        "color": "#8464c4"
-	    },
-	    "hljs-literal": {
-	        "color": "#b45a3c"
-	    },
-	    "hljs-comment": {
-	        "color": "#7e7777"
-	    },
-	    "hljs-quote": {
-	        "color": "#7e7777"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-built_in": {
-	        "color": "#b45a3c"
-	    },
-	    "hljs-link": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 208 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#7272ca"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#f4ecec",
-	        "color": "#585050",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-meta": {
-	        "color": "#b45a3c"
-	    },
-	    "hljs-string": {
-	        "color": "#4b8b8b"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#b45a3c"
-	    },
-	    "hljs-type": {
-	        "color": "#b45a3c"
-	    },
-	    "hljs-section": {
-	        "color": "#7272ca"
-	    },
-	    "hljs-deletion": {
-	        "backgroundColor": "#ca4949"
-	    },
-	    "hljs-addition": {
-	        "backgroundColor": "#4b8b8b"
-	    },
-	    "hljs-name": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-variable": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#8464c4"
-	    },
-	    "hljs-bullet": {
-	        "color": "#4b8b8b"
-	    },
-	    "hljs-params": {
-	        "color": "#b45a3c"
-	    },
-	    "hljs-number": {
-	        "color": "#b45a3c"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-symbol": {
-	        "color": "#4b8b8b"
-	    },
-	    "hljs-attribute": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-tag": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-keyword": {
-	        "color": "#8464c4"
-	    },
-	    "hljs-literal": {
-	        "color": "#b45a3c"
-	    },
-	    "hljs-comment": {
-	        "color": "#655d5d"
-	    },
-	    "hljs-quote": {
-	        "color": "#655d5d"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-built_in": {
-	        "color": "#b45a3c"
-	    },
-	    "hljs-link": {
-	        "color": "#ca4949"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 209 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#478c90"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#171c19",
-	        "color": "#87928a",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#b16139"
-	    },
-	    "hljs-meta": {
-	        "color": "#9f713c"
-	    },
-	    "hljs-string": {
-	        "color": "#489963"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#9f713c"
-	    },
-	    "hljs-type": {
-	        "color": "#9f713c"
-	    },
-	    "hljs-section": {
-	        "color": "#478c90"
-	    },
-	    "hljs-deletion": {
-	        "backgroundColor": "#b16139"
-	    },
-	    "hljs-addition": {
-	        "backgroundColor": "#489963"
-	    },
-	    "hljs-name": {
-	        "color": "#b16139"
-	    },
-	    "hljs-variable": {
-	        "color": "#b16139"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#55859b"
-	    },
-	    "hljs-bullet": {
-	        "color": "#489963"
-	    },
-	    "hljs-params": {
-	        "color": "#9f713c"
-	    },
-	    "hljs-number": {
-	        "color": "#9f713c"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#b16139"
-	    },
-	    "hljs-symbol": {
-	        "color": "#489963"
-	    },
-	    "hljs-attribute": {
-	        "color": "#b16139"
-	    },
-	    "hljs-tag": {
-	        "color": "#b16139"
-	    },
-	    "hljs-keyword": {
-	        "color": "#55859b"
-	    },
-	    "hljs-literal": {
-	        "color": "#9f713c"
-	    },
-	    "hljs-comment": {
-	        "color": "#78877d"
-	    },
-	    "hljs-quote": {
-	        "color": "#78877d"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#b16139"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#b16139"
-	    },
-	    "hljs-built_in": {
-	        "color": "#9f713c"
-	    },
-	    "hljs-link": {
-	        "color": "#b16139"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 210 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#478c90"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#ecf4ee",
-	        "color": "#526057",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#b16139"
-	    },
-	    "hljs-meta": {
-	        "color": "#9f713c"
-	    },
-	    "hljs-string": {
-	        "color": "#489963"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#9f713c"
-	    },
-	    "hljs-type": {
-	        "color": "#9f713c"
-	    },
-	    "hljs-section": {
-	        "color": "#478c90"
-	    },
-	    "hljs-deletion": {
-	        "backgroundColor": "#b16139"
-	    },
-	    "hljs-addition": {
-	        "backgroundColor": "#489963"
-	    },
-	    "hljs-name": {
-	        "color": "#b16139"
-	    },
-	    "hljs-variable": {
-	        "color": "#b16139"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#55859b"
-	    },
-	    "hljs-bullet": {
-	        "color": "#489963"
-	    },
-	    "hljs-params": {
-	        "color": "#9f713c"
-	    },
-	    "hljs-number": {
-	        "color": "#9f713c"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#b16139"
-	    },
-	    "hljs-symbol": {
-	        "color": "#489963"
-	    },
-	    "hljs-attribute": {
-	        "color": "#b16139"
-	    },
-	    "hljs-tag": {
-	        "color": "#b16139"
-	    },
-	    "hljs-keyword": {
-	        "color": "#55859b"
-	    },
-	    "hljs-literal": {
-	        "color": "#9f713c"
-	    },
-	    "hljs-comment": {
-	        "color": "#5f6d64"
-	    },
-	    "hljs-quote": {
-	        "color": "#5f6d64"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#b16139"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#b16139"
-	    },
-	    "hljs-built_in": {
-	        "color": "#9f713c"
-	    },
-	    "hljs-link": {
-	        "color": "#b16139"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 211 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#3d62f5"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#131513",
-	        "color": "#8ca68c",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-meta": {
-	        "color": "#87711d"
-	    },
-	    "hljs-string": {
-	        "color": "#29a329"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#87711d"
-	    },
-	    "hljs-type": {
-	        "color": "#87711d"
-	    },
-	    "hljs-section": {
-	        "color": "#3d62f5"
-	    },
-	    "hljs-name": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-variable": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#ad2bee"
-	    },
-	    "hljs-bullet": {
-	        "color": "#29a329"
-	    },
-	    "hljs-params": {
-	        "color": "#87711d"
-	    },
-	    "hljs-number": {
-	        "color": "#87711d"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-symbol": {
-	        "color": "#29a329"
-	    },
-	    "hljs-attribute": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-tag": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-keyword": {
-	        "color": "#ad2bee"
-	    },
-	    "hljs-literal": {
-	        "color": "#87711d"
-	    },
-	    "hljs-comment": {
-	        "color": "#809980"
-	    },
-	    "hljs-quote": {
-	        "color": "#809980"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-built_in": {
-	        "color": "#87711d"
-	    },
-	    "hljs-link": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 212 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#3d62f5"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#f4fbf4",
-	        "color": "#5e6e5e",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-meta": {
-	        "color": "#87711d"
-	    },
-	    "hljs-string": {
-	        "color": "#29a329"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#87711d"
-	    },
-	    "hljs-type": {
-	        "color": "#87711d"
-	    },
-	    "hljs-section": {
-	        "color": "#3d62f5"
-	    },
-	    "hljs-name": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-variable": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#ad2bee"
-	    },
-	    "hljs-bullet": {
-	        "color": "#29a329"
-	    },
-	    "hljs-params": {
-	        "color": "#87711d"
-	    },
-	    "hljs-number": {
-	        "color": "#87711d"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-symbol": {
-	        "color": "#29a329"
-	    },
-	    "hljs-attribute": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-tag": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-keyword": {
-	        "color": "#ad2bee"
-	    },
-	    "hljs-literal": {
-	        "color": "#87711d"
-	    },
-	    "hljs-comment": {
-	        "color": "#687d68"
-	    },
-	    "hljs-quote": {
-	        "color": "#687d68"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-built_in": {
-	        "color": "#87711d"
-	    },
-	    "hljs-link": {
-	        "color": "#e6193c"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 213 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#3d8fd1"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#202746",
-	        "color": "#979db4",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#c94922"
-	    },
-	    "hljs-meta": {
-	        "color": "#c76b29"
-	    },
-	    "hljs-string": {
-	        "color": "#ac9739"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#c76b29"
-	    },
-	    "hljs-type": {
-	        "color": "#c76b29"
-	    },
-	    "hljs-section": {
-	        "color": "#3d8fd1"
-	    },
-	    "hljs-name": {
-	        "color": "#c94922"
-	    },
-	    "hljs-variable": {
-	        "color": "#c94922"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#6679cc"
-	    },
-	    "hljs-bullet": {
-	        "color": "#ac9739"
-	    },
-	    "hljs-params": {
-	        "color": "#c76b29"
-	    },
-	    "hljs-number": {
-	        "color": "#c76b29"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#c94922"
-	    },
-	    "hljs-symbol": {
-	        "color": "#ac9739"
-	    },
-	    "hljs-attribute": {
-	        "color": "#c94922"
-	    },
-	    "hljs-tag": {
-	        "color": "#c94922"
-	    },
-	    "hljs-keyword": {
-	        "color": "#6679cc"
-	    },
-	    "hljs-literal": {
-	        "color": "#c76b29"
-	    },
-	    "hljs-comment": {
-	        "color": "#898ea4"
-	    },
-	    "hljs-quote": {
-	        "color": "#898ea4"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#c94922"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#c94922"
-	    },
-	    "hljs-built_in": {
-	        "color": "#c76b29"
-	    },
-	    "hljs-link": {
-	        "color": "#c94922"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 214 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#3d8fd1"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#f5f7ff",
-	        "color": "#5e6687",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#c94922"
-	    },
-	    "hljs-meta": {
-	        "color": "#c76b29"
-	    },
-	    "hljs-string": {
-	        "color": "#ac9739"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#c76b29"
-	    },
-	    "hljs-type": {
-	        "color": "#c76b29"
-	    },
-	    "hljs-section": {
-	        "color": "#3d8fd1"
-	    },
-	    "hljs-name": {
-	        "color": "#c94922"
-	    },
-	    "hljs-variable": {
-	        "color": "#c94922"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#6679cc"
-	    },
-	    "hljs-bullet": {
-	        "color": "#ac9739"
-	    },
-	    "hljs-params": {
-	        "color": "#c76b29"
-	    },
-	    "hljs-number": {
-	        "color": "#c76b29"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#c94922"
-	    },
-	    "hljs-symbol": {
-	        "color": "#ac9739"
-	    },
-	    "hljs-attribute": {
-	        "color": "#c94922"
-	    },
-	    "hljs-tag": {
-	        "color": "#c94922"
-	    },
-	    "hljs-keyword": {
-	        "color": "#6679cc"
-	    },
-	    "hljs-literal": {
-	        "color": "#c76b29"
-	    },
-	    "hljs-comment": {
-	        "color": "#6b7394"
-	    },
-	    "hljs-quote": {
-	        "color": "#6b7394"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#c94922"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#c94922"
-	    },
-	    "hljs-built_in": {
-	        "color": "#c76b29"
-	    },
-	    "hljs-link": {
-	        "color": "#c94922"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 215 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs": {
-	        "color": "#363c69"
-	    },
-	    "hljs-string": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-meta": {
-	        "color": "#802022"
-	    },
-	    "hljs-template-tag": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-type": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-section": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-deletion": {
-	        "color": "#802022"
-	    },
-	    "hljs-subst": {
-	        "color": "#363c69"
-	    },
-	    "hljs-addition": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-bullet": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-variable": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-selector-tag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-name": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-symbol": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-attribute": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-keyword": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-literal": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-comment": {
-	        "color": "#802022"
-	    },
-	    "hljs-quote": {
-	        "color": "#802022"
-	    },
-	    "hljs-doctag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-built_in": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-link": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    }
-	};
-
-/***/ },
-/* 216 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#9b869b"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "background": "#222",
-	        "color": "#fff"
-	    },
-	    "hljs-regexp": {
-	        "color": "#ab875d"
-	    },
-	    "hljs-meta": {
-	        "color": "#ab875d"
-	    },
-	    "hljs-string": {
-	        "color": "#8f9c6c"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#ab875d"
-	    },
-	    "hljs-type": {
-	        "color": "#9b869b"
-	    },
-	    "hljs-section": {
-	        "color": "#9b869b"
-	    },
-	    "hljs-deletion": {
-	        "color": "#ab875d"
-	    },
-	    "hljs-addition": {
-	        "color": "#8f9c6c"
-	    },
-	    "hljs-bullet": {
-	        "color": "#ab875d"
-	    },
-	    "hljs-variable": {
-	        "color": "#ab875d"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#8f9c6c"
-	    },
-	    "hljs-name": {
-	        "color": "#9b869b"
-	    },
-	    "hljs-params": {
-	        "color": "#ab875d"
-	    },
-	    "hljs-number": {
-	        "color": "#ab875d"
-	    },
-	    "hljs-symbol": {
-	        "color": "#ab875d"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#9b869b"
-	    },
-	    "hljs-attribute": {
-	        "color": "#9b869b"
-	    },
-	    "hljs-tag": {
-	        "color": "#ab875d"
-	    },
-	    "hljs-keyword": {
-	        "color": "#8f9c6c"
-	    },
-	    "hljs-literal": {
-	        "color": "#ab875d"
-	    },
-	    "hljs-comment": {
-	        "color": "#777"
-	    },
-	    "hljs-quote": {
-	        "color": "#777"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#9b869b"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#ab875d"
-	    },
-	    "hljs-built_in": {
-	        "color": "#ab875d"
-	    },
-	    "hljs-link": {
-	        "color": "#ab875d"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 217 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#3182bd"
-	    },
-	    "hljs": {
-	        "color": "#000"
-	    },
-	    "hljs-string": {
-	        "color": "#756bb1"
-	    },
-	    "hljs-meta": {
-	        "color": "#756bb1"
-	    },
-	    "hljs-template-tag": {
-	        "color": "#756bb1"
-	    },
-	    "hljs-regexp": {
-	        "color": "#31a354"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-strong": {
-	        "color": "#3182bd"
-	    },
-	    "hljs-type": {
-	        "color": "#3182bd"
-	    },
-	    "hljs-section": {
-	        "color": "#3182bd"
-	    },
-	    "hljs-deletion": {
-	        "color": "#88f"
-	    },
-	    "hljs-subst": {
-	        "color": "#000"
-	    },
-	    "hljs-addition": {
-	        "color": "#756bb1"
-	    },
-	    "hljs-bullet": {
-	        "color": "#31a354"
-	    },
-	    "hljs-variable": {
-	        "color": "#88f"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#3182bd"
-	    },
-	    "hljs-name": {
-	        "color": "#3182bd"
-	    },
-	    "hljs-number": {
-	        "color": "#31a354"
-	    },
-	    "hljs-symbol": {
-	        "color": "#756bb1"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#3182bd"
-	    },
-	    "hljs-tag": {
-	        "color": "#3182bd"
-	    },
-	    "hljs-keyword": {
-	        "color": "#3182bd"
-	    },
-	    "hljs-literal": {
-	        "color": "#31a354"
-	    },
-	    "hljs-comment": {
-	        "color": "#636363"
-	    },
-	    "hljs-quote": {
-	        "color": "#636363"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#3182bd"
-	    },
-	    "hljs-doctag": {
-	        "color": "#3182bd"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#756bb1"
-	    },
-	    "hljs-built_in": {
-	        "color": "#3182bd"
-	    },
-	    "hljs-link": {
-	        "color": "#31a354"
-	    },
-	    "hljs-attribute": {
-	        "color": "#e6550d"
-	    }
-	};
-
-/***/ },
-/* 218 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs": {
-	        "color": "#ddd"
-	    },
-	    "hljs-string": {
-	        "color": "#d88"
-	    },
-	    "hljs-meta": {
-	        "color": "#777"
-	    },
-	    "hljs-template-tag": {
-	        "color": "#d88"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-type": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-section": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-deletion": {
-	        "color": "#777"
-	    },
-	    "hljs-subst": {
-	        "color": "#ddd"
-	    },
-	    "hljs-addition": {
-	        "color": "#d88"
-	    },
-	    "hljs-name": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-bullet": {
-	        "color": "#d88"
-	    },
-	    "hljs-selector-tag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-variable": {
-	        "color": "#d88"
-	    },
-	    "hljs-symbol": {
-	        "color": "#d88"
-	    },
-	    "hljs-attribute": {
-	        "color": "#d88"
-	    },
-	    "hljs-keyword": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-literal": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-comment": {
-	        "color": "#777"
-	    },
-	    "hljs-quote": {
-	        "color": "#777"
-	    },
-	    "hljs-doctag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-built_in": {
-	        "color": "#d88"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#d88"
-	    },
-	    "hljs-link": {
-	        "color": "white"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    }
-	};
-
-/***/ },
-/* 219 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-selector-attr": {
-	        "color": "#e0c46c"
-	    },
-	    "hljs": {
-	        "color": "#bababa"
-	    },
-	    "hljs-regexp": {
-	        "color": "#6896ba"
-	    },
-	    "hljs-string": {
-	        "color": "#e0c46c"
-	    },
-	    "hljs-template-tag": {
-	        "color": "#e0c46c"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#e0c46c"
-	    },
-	    "hljs-strong": {
-	        "color": "#a8a8a2"
-	    },
-	    "hljs-type": {
-	        "color": "#e0c46c"
-	    },
-	    "hljs-section": {
-	        "color": "#cb7832"
-	    },
-	    "hljs-subst": {
-	        "color": "#e0c46c"
-	    },
-	    "hljs-addition": {
-	        "color": "#e0c46c"
-	    },
-	    "hljs-bullet": {
-	        "color": "#6896ba"
-	    },
-	    "hljs-name": {
-	        "color": "#cb7832"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#cb7832"
-	    },
-	    "hljs-code": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-params": {
-	        "color": "#b9b9b9"
-	    },
-	    "hljs-variable": {
-	        "color": "#cb7832"
-	    },
-	    "hljs-number": {
-	        "color": "#6896ba"
-	    },
-	    "hljs-symbol": {
-	        "color": "#e0c46c"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#e0c46c"
-	    },
-	    "hljs-attribute": {
-	        "color": "#cb7832"
-	    },
-	    "hljs-selector-pseudo": {
-	        "color": "#e0c46c"
-	    },
-	    "hljs-keyword": {
-	        "color": "#cb7832"
-	    },
-	    "hljs-literal": {
-	        "color": "#6896ba"
-	    },
-	    "hljs-quote": {
-	        "color": "#6896ba"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-built_in": {
-	        "color": "#e0c46c"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#e0c46c"
-	    },
-	    "hljs-link": {
-	        "color": "#6896ba"
-	    },
-	    "hljs-comment": {
-	        "color": "#7f7f7f"
-	    },
-	    "hljs-deletion": {
-	        "color": "#7f7f7f"
-	    },
-	    "hljs-meta": {
-	        "color": "#7f7f7f"
-	    }
-	};
-
-/***/ },
-/* 220 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-selector-attr": {
-	        "color": "#BC6060"
-	    },
-	    "hljs-title": {
-	        "color": "#880000",
-	        "fontWeight": "bold"
-	    },
-	    "hljs": {
-	        "color": "#444"
-	    },
-	    "hljs-regexp": {
-	        "color": "#BC6060"
-	    },
-	    "hljs-string": {
-	        "color": "#880000"
-	    },
-	    "hljs-template-tag": {
-	        "color": "#880000"
-	    },
-	    "hljs-meta": {
-	        "color": "#2B6EA1"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-type": {
-	        "color": "#880000"
-	    },
-	    "hljs-section": {
-	        "color": "#880000",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-deletion": {
-	        "color": "#880000"
-	    },
-	    "hljs-subst": {
-	        "color": "#444"
-	    },
-	    "hljs-meta-keyword": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-addition": {
-	        "color": "#1F811F"
-	    },
-	    "hljs-name": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-bullet": {
-	        "color": "#1F811F"
-	    },
-	    "hljs-selector-tag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-code": {
-	        "color": "#1F811F"
-	    },
-	    "hljs-variable": {
-	        "color": "#BC6060"
-	    },
-	    "hljs-number": {
-	        "color": "#880000"
-	    },
-	    "hljs-symbol": {
-	        "color": "#BC6060"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#880000"
-	    },
-	    "hljs-attribute": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-selector-pseudo": {
-	        "color": "#BC6060"
-	    },
-	    "hljs-keyword": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-literal": {
-	        "color": "#1F811F"
-	    },
-	    "hljs-quote": {
-	        "color": "#880000"
-	    },
-	    "hljs-comment": {
-	        "color": "#888888"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#880000"
-	    },
-	    "hljs-doctag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-built_in": {
-	        "color": "#1F811F"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#BC6060"
-	    },
-	    "hljs-link": {
-	        "color": "#BC6060"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 221 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#458",
-	        "fontWeight": "bold"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "color": "#000",
-	        "background": "#f8f8ff"
-	    },
-	    "hljs-string": {
-	        "color": "#219161"
-	    },
-	    "hljs-regexp": {
-	        "color": "#b68"
-	    },
-	    "hljs-meta": {
-	        "color": "#999",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#0086b3"
-	    },
-	    "hljs-type": {
-	        "color": "#19469d"
-	    },
-	    "hljs-section": {
-	        "color": "#19469d"
-	    },
-	    "hljs-deletion": {
-	        "background": "#fdd"
-	    },
-	    "hljs-subst": {
-	        "color": "#954121"
-	    },
-	    "hljs-addition": {
-	        "background": "#dfd"
-	    },
-	    "hljs-name": {
-	        "color": "#000080",
-	        "fontWeight": "normal"
-	    },
-	    "hljs-variable": {
-	        "color": "#008080"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#954121"
-	    },
-	    "hljs-bullet": {
-	        "color": "#990073"
-	    },
-	    "hljs-params": {
-	        "color": "#00f"
-	    },
-	    "hljs-number": {
-	        "color": "#40a070"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#19469d"
-	    },
-	    "hljs-symbol": {
-	        "color": "#990073"
-	    },
-	    "hljs-attribute": {
-	        "color": "#000080",
-	        "fontWeight": "normal"
-	    },
-	    "hljs-tag": {
-	        "color": "#000080",
-	        "fontWeight": "normal"
-	    },
-	    "hljs-keyword": {
-	        "color": "#954121"
-	    },
-	    "hljs-literal": {
-	        "color": "#954121"
-	    },
-	    "hljs-comment": {
-	        "color": "#408080",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-quote": {
-	        "color": "#408080",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#19469d"
-	    },
-	    "hljs-doctag": {
-	        "color": "#219161"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#008080"
-	    },
-	    "hljs-built_in": {
-	        "color": "#0086b3"
-	    },
-	    "hljs-link": {
-	        "color": "#b68"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 222 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs": {
-	        "color": "#0ff"
-	    },
-	    "hljs-string": {
-	        "color": "#ff0"
-	    },
-	    "hljs-regexp": {
-	        "color": "#0f0"
-	    },
-	    "hljs-template-tag": {
-	        "color": "#ff0"
-	    },
-	    "hljs-meta": {
-	        "color": "#008080"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#ff0"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-type": {
-	        "color": "#fff"
-	    },
-	    "hljs-section": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-deletion": {
-	        "color": "#888"
-	    },
-	    "hljs-subst": {
-	        "color": "#0ff"
-	    },
-	    "hljs-addition": {
-	        "color": "#ff0"
-	    },
-	    "hljs-bullet": {
-	        "color": "#ff0"
-	    },
-	    "hljs-name": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-selector-tag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-variable": {
-	        "color": "#fff"
-	    },
-	    "hljs-number": {
-	        "color": "#0f0"
-	    },
-	    "hljs-symbol": {
-	        "color": "#ff0"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#fff"
-	    },
-	    "hljs-attribute": {
-	        "color": "#ff0"
-	    },
-	    "hljs-keyword": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-literal": {
-	        "color": "#0f0"
-	    },
-	    "hljs-comment": {
-	        "color": "#888"
-	    },
-	    "hljs-quote": {
-	        "color": "#888"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#fff"
-	    },
-	    "hljs-doctag": {
-	        "color": "#888"
-	    },
-	    "hljs-built_in": {
-	        "color": "#ff0"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#ff0"
-	    },
-	    "hljs-link": {
-	        "color": "#0f0"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    }
-	};
-
-/***/ },
-/* 223 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#900"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "background": "#eee",
-	        "color": "black"
-	    },
-	    "hljs-string": {
-	        "color": "#d14"
-	    },
-	    "hljs-meta": {
-	        "color": "#3344bb"
-	    },
-	    "hljs-regexp": {
-	        "backgroundColor": "#fff0ff",
-	        "color": "#880088"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-type": {
-	        "color": "#458"
-	    },
-	    "hljs-section": {
-	        "color": "#900"
-	    },
-	    "hljs-deletion": {
-	        "color": "#d14"
-	    },
-	    "hljs-addition": {
-	        "color": "#070"
-	    },
-	    "hljs-class .hljs-title": {
-	        "color": "#458"
-	    },
-	    "hljs-variable": {
-	        "color": "#336699"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#099"
-	    },
-	    "hljs-bullet": {
-	        "color": "#997700"
-	    },
-	    "hljs-code": {
-	        "color": "#099"
-	    },
-	    "hljs-number": {
-	        "color": "#099"
-	    },
-	    "hljs-symbol": {
-	        "color": "#990073"
-	    },
-	    "hljs-attribute": {
-	        "color": "#070"
-	    },
-	    "hljs-keyword": {
-	        "color": "#099"
-	    },
-	    "hljs-literal": {
-	        "color": "#099"
-	    },
-	    "hljs-quote": {
-	        "color": "#998",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-comment": {
-	        "color": "#998",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#336699"
-	    },
-	    "hljs-link": {
-	        "color": "#070"
-	    },
-	    "hljs-tag": {
-	        "color": "#007700"
-	    },
-	    "hljs-name": {
-	        "color": "#007700"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#007700"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#007700"
-	    }
-	};
-
-/***/ },
-/* 224 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#900",
-	        "fontWeight": "bold"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "color": "#333",
-	        "background": "#f8f8f8"
-	    },
-	    "hljs-string": {
-	        "color": "#d14"
-	    },
-	    "hljs-regexp": {
-	        "color": "#009926"
-	    },
-	    "hljs-meta": {
-	        "color": "#999",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#0086b3"
-	    },
-	    "hljs-type": {
-	        "color": "#458",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-section": {
-	        "color": "#900",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-deletion": {
-	        "background": "#fdd"
-	    },
-	    "hljs-subst": {
-	        "fontWeight": "normal"
-	    },
-	    "hljs-addition": {
-	        "background": "#dfd"
-	    },
-	    "hljs-class .hljs-title": {
-	        "color": "#458",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-variable": {
-	        "color": "#008080"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#333",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-name": {
-	        "color": "#000080",
-	        "fontWeight": "normal"
-	    },
-	    "hljs-bullet": {
-	        "color": "#990073"
-	    },
-	    "hljs-number": {
-	        "color": "#008080"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#900",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-symbol": {
-	        "color": "#990073"
-	    },
-	    "hljs-attribute": {
-	        "color": "#000080",
-	        "fontWeight": "normal"
-	    },
-	    "hljs-tag": {
-	        "color": "#000080",
-	        "fontWeight": "normal"
-	    },
-	    "hljs-tag .hljs-attr": {
-	        "color": "#008080"
-	    },
-	    "hljs-keyword": {
-	        "color": "#333",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-literal": {
-	        "color": "#008080"
-	    },
-	    "hljs-comment": {
-	        "color": "#998",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-quote": {
-	        "color": "#998",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-doctag": {
-	        "color": "#d14"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#008080"
-	    },
-	    "hljs-built_in": {
-	        "color": "#0086b3"
-	    },
-	    "hljs-link": {
-	        "color": "#009926"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 225 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-selector-attr": {
-	        "color": "#795da3"
-	    },
-	    "hljs-title": {
-	        "color": "#795da3"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "background": "white",
-	        "padding": "0.5em",
-	        "color": "#333333",
-	        "overflowX": "auto"
-	    },
-	    "hljs-string": {
-	        "color": "#df5000"
-	    },
-	    "hljs-meta": {
-	        "color": "#969896"
-	    },
-	    "hljs-emphasis": {
-	        "color": "#df5000"
-	    },
-	    "hljs-strong": {
-	        "color": "#df5000"
-	    },
-	    "hljs-type": {
-	        "color": "#a71d5d"
-	    },
-	    "hljs-section": {
-	        "color": "#63a35c"
-	    },
-	    "hljs-deletion": {
-	        "color": "#bd2c00",
-	        "backgroundColor": "#ffecec"
-	    },
-	    "hljs-addition": {
-	        "color": "#55a532",
-	        "backgroundColor": "#eaffea"
-	    },
-	    "hljs-bullet": {
-	        "color": "#0086b3"
-	    },
-	    "hljs-variable": {
-	        "color": "#df5000"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#a71d5d"
-	    },
-	    "hljs-name": {
-	        "color": "#63a35c"
-	    },
-	    "hljs-symbol": {
-	        "color": "#0086b3"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#795da3"
-	    },
-	    "hljs-attribute": {
-	        "color": "#0086b3"
-	    },
-	    "hljs-attr": {
-	        "color": "#795da3"
-	    },
-	    "hljs-selector-pseudo": {
-	        "color": "#795da3"
-	    },
-	    "hljs-tag": {
-	        "color": "#333333"
-	    },
-	    "hljs-keyword": {
-	        "color": "#a71d5d"
-	    },
-	    "hljs-literal": {
-	        "color": "#0086b3"
-	    },
-	    "hljs-comment": {
-	        "color": "#969896"
-	    },
-	    "hljs-quote": {
-	        "color": "#df5000"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#795da3"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#df5000"
-	    },
-	    "hljs-link": {
-	        "textDecoration": "underline"
-	    }
-	};
-
-/***/ },
-/* 226 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-selector-attr": {
-	        "color": "#080"
-	    },
-	    "hljs-title": {
-	        "color": "#606"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "background": "white",
-	        "color": "black"
-	    },
-	    "hljs-string": {
-	        "color": "#080"
-	    },
-	    "hljs-regexp": {
-	        "color": "#080"
-	    },
-	    "hljs-meta": {
-	        "color": "#066"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#606"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-type": {
-	        "color": "#606"
-	    },
-	    "hljs-section": {
-	        "color": "#008"
-	    },
-	    "hljs-deletion": {
-	        "backgroundColor": "#ffc8bd"
-	    },
-	    "hljs-subst": {
-	        "color": "#000"
-	    },
-	    "hljs-addition": {
-	        "backgroundColor": "#baeeba"
-	    },
-	    "hljs-name": {
-	        "color": "#008"
-	    },
-	    "hljs-variable": {
-	        "color": "#660"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#008"
-	    },
-	    "hljs-bullet": {
-	        "color": "#066"
-	    },
-	    "hljs-params": {
-	        "color": "#606"
-	    },
-	    "hljs-number": {
-	        "color": "#066"
-	    },
-	    "hljs-symbol": {
-	        "color": "#066"
-	    },
-	    "hljs-formula": {
-	        "backgroundColor": "#eee",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-attribute": {
-	        "color": "#000"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#9B703F"
-	    },
-	    "hljs-selector-pseudo": {
-	        "color": "#080"
-	    },
-	    "hljs-attr": {
-	        "color": "#606"
-	    },
-	    "hljs-keyword": {
-	        "color": "#008"
-	    },
-	    "hljs-literal": {
-	        "color": "#066"
-	    },
-	    "hljs-comment": {
-	        "color": "#800"
-	    },
-	    "hljs-quote": {
-	        "color": "#800"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#9B703F"
-	    },
-	    "hljs-doctag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#660"
-	    },
-	    "hljs-built_in": {
-	        "color": "#606"
-	    },
-	    "hljs-link": {
-	        "color": "#066"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    }
-	};
-
-/***/ },
-/* 227 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#000",
-	        "fontWeight": "bold"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "color": "#333",
-	        "background": "#fff"
-	    },
-	    "hljs-string": {
-	        "color": "#333",
-	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAJ0lEQVQIW2O8e/fufwYGBgZBQUEQxcCIIfDu3Tuwivfv30NUoAsAALHpFMMLqZlPAAAAAElFTkSuQmCC) repeat"
-	    },
-	    "hljs-regexp": {
-	        "color": "#333",
-	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAICAYAAADA+m62AAAAPUlEQVQYV2NkQAN37979r6yszIgujiIAU4RNMVwhuiQ6H6wQl3XI4oy4FMHcCJPHcDS6J2A2EqUQpJhohQDexSef15DBCwAAAABJRU5ErkJggg==) repeat"
-	    },
-	    "hljs-meta": {
-	        "color": "#999",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#000",
-	        "textDecoration": "underline"
-	    },
-	    "hljs-type": {
-	        "color": "#333",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-section": {
-	        "color": "#000",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-deletion": {
-	        "color": "#fff",
-	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAADCAYAAABS3WWCAAAAE0lEQVQIW2MMDQ39zzhz5kwIAQAyxweWgUHd1AAAAABJRU5ErkJggg==) repeat"
-	    },
-	    "hljs-subst": {
-	        "fontWeight": "normal"
-	    },
-	    "hljs-addition": {
-	        "color": "#000",
-	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAkAAAAJCAYAAADgkQYQAAAALUlEQVQYV2N89+7dfwYk8P79ewZBQUFkIQZGOiu6e/cuiptQHAPl0NtNxAQBAM97Oejj3Dg7AAAAAElFTkSuQmCC) repeat"
-	    },
-	    "hljs-class .hljs-title": {
-	        "color": "#333",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-name": {
-	        "color": "#333",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#333",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-bullet": {
-	        "color": "#000",
-	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAKElEQVQIW2NkQAO7d+/+z4gsBhJwdXVlhAvCBECKwIIwAbhKZBUwBQA6hBpm5efZsgAAAABJRU5ErkJggg==) repeat"
-	    },
-	    "hljs-number": {
-	        "color": "#777"
-	    },
-	    "hljs-formula": {
-	        "color": "#333",
-	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAJ0lEQVQIW2O8e/fufwYGBgZBQUEQxcCIIfDu3Tuwivfv30NUoAsAALHpFMMLqZlPAAAAAElFTkSuQmCC) repeat"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#000",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-symbol": {
-	        "color": "#000",
-	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAKElEQVQIW2NkQAO7d+/+z4gsBhJwdXVlhAvCBECKwIIwAbhKZBUwBQA6hBpm5efZsgAAAABJRU5ErkJggg==) repeat"
-	    },
-	    "hljs-tag": {
-	        "color": "#333"
-	    },
-	    "hljs-keyword": {
-	        "color": "#333",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-literal": {
-	        "color": "#777"
-	    },
-	    "hljs-comment": {
-	        "color": "#777",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-quote": {
-	        "color": "#777",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-doctag": {
-	        "color": "#333",
-	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAJ0lEQVQIW2O8e/fufwYGBgZBQUEQxcCIIfDu3Tuwivfv30NUoAsAALHpFMMLqZlPAAAAAElFTkSuQmCC) repeat"
-	    },
-	    "hljs-built_in": {
-	        "color": "#000",
-	        "textDecoration": "underline"
-	    },
-	    "hljs-link": {
-	        "color": "#000",
-	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAKElEQVQIW2NkQAO7d+/+z4gsBhJwdXVlhAvCBECKwIIwAbhKZBUwBQA6hBpm5efZsgAAAABJRU5ErkJggg==) repeat"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 228 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#1290bf"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "background": "#322931",
-	        "color": "#b9b5b8",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#dd464c"
-	    },
-	    "hljs-string": {
-	        "color": "#8fc13e"
-	    },
-	    "hljs-meta": {
-	        "color": "#149b93"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#fd8b19"
-	    },
-	    "hljs-type": {
-	        "color": "#fd8b19"
-	    },
-	    "hljs-section": {
-	        "color": "#1290bf"
-	    },
-	    "hljs-deletion": {
-	        "color": "#dd464c"
-	    },
-	    "hljs-addition": {
-	        "color": "#8fc13e"
-	    },
-	    "hljs-name": {
-	        "color": "#dd464c"
-	    },
-	    "hljs-variable": {
-	        "color": "#dd464c"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#c85e7c"
-	    },
-	    "hljs-class .hljs-title": {
-	        "color": "#fdcc59"
-	    },
-	    "hljs-params": {
-	        "color": "#fd8b19"
-	    },
-	    "hljs-bullet": {
-	        "color": "#8fc13e"
-	    },
-	    "hljs-number": {
-	        "color": "#fd8b19"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#dd464c"
-	    },
-	    "hljs-symbol": {
-	        "color": "#8fc13e"
-	    },
-	    "hljs-attribute": {
-	        "color": "#dd464c"
-	    },
-	    "hljs-tag": {
-	        "color": "#dd464c"
-	    },
-	    "hljs-keyword": {
-	        "color": "#c85e7c"
-	    },
-	    "hljs-literal": {
-	        "color": "#fd8b19"
-	    },
-	    "hljs-comment": {
-	        "color": "#989498"
-	    },
-	    "hljs-quote": {
-	        "color": "#989498"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#dd464c"
-	    },
-	    "hljs-function": {
-	        "color": "#1290bf"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#dd464c"
-	    },
-	    "hljs-built_in": {
-	        "color": "#fd8b19"
-	    },
-	    "hljs-link": {
-	        "color": "#dd464c"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 229 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-selector-attr": {
-	        "color": "#b5bd68"
-	    },
-	    "hljs-title": {
-	        "color": "#f0c674"
-	    },
-	    "hljs": {
-	        "color": "#c5c8c6"
-	    },
-	    "hljs-string": {
-	        "color": "#b5bd68"
-	    },
-	    "hljs-meta": {
-	        "color": "#707880"
-	    },
-	    "hljs-template-tag": {
-	        "color": "#8abeb7"
-	    },
-	    "hljs-regexp": {
-	        "color": "#b5bd68"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#de935f"
-	    },
-	    "hljs-type": {
-	        "color": "#de935f"
-	    },
-	    "hljs-section": {
-	        "color": "#de935f"
-	    },
-	    "hljs-deletion": {
-	        "color": "#cc6666"
-	    },
-	    "hljs-subst": {
-	        "color": "#8abeb7"
-	    },
-	    "hljs-addition": {
-	        "color": "#b5bd68"
-	    },
-	    "hljs-name": {
-	        "color": "#f0c674"
-	    },
-	    "hljs-bullet": {
-	        "color": "#81a2be"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#81a2be"
-	    },
-	    "hljs-code": {
-	        "color": "#b294bb"
-	    },
-	    "hljs-variable": {
-	        "color": "#8abeb7"
-	    },
-	    "hljs-number": {
-	        "color": "#cc6666"
-	    },
-	    "hljs::selection": {
-	        "background": "#373b41"
-	    },
-	    "hljs::-moz-selection": {
-	        "background": "#373b41"
-	    },
-	    "hljs-attribute": {
-	        "color": "#b294bb"
-	    },
-	    "hljs-symbol": {
-	        "color": "#cc6666"
-	    },
-	    "hljs-selector-pseudo": {
-	        "color": "#b5bd68"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#b294bb"
-	    },
-	    "hljs-tag": {
-	        "color": "#81a2be"
-	    },
-	    "hljs-meta .hljs-keyword": {
-	        "color": "#707880"
-	    },
-	    "hljs-literal": {
-	        "color": "#cc6666"
-	    },
-	    "hljs-keyword": {
-	        "color": "#81a2be"
-	    },
-	    "hljs-comment": {
-	        "color": "#707880"
-	    },
-	    "hljs-quote": {
-	        "color": "#de935f"
-	    },
-	    "hljs span::selection": {
-	        "background": "#373b41"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#de935f"
-	    },
-	    "hljs-doctag": {
-	        "color": "#b5bd68"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#8abeb7"
-	    },
-	    "hljs-built_in": {
-	        "color": "#de935f"
-	    },
-	    "hljs-link": {
-	        "color": "#cc6666"
-	    },
-	    "hljs span::-moz-selection": {
-	        "background": "#373b41"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 230 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "fontWeight": "normal",
-	        "color": "#000"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "color": "#000",
-	        "background": "#fff"
-	    },
-	    "hljs-regexp": {
-	        "fontWeight": "normal"
-	    },
-	    "hljs-meta": {
-	        "color": "#808000"
-	    },
-	    "hljs-string": {
-	        "color": "#008000",
-	        "fontWeight": "bold"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-type": {
-	        "fontWeight": "bold",
-	        "color": "#000080"
-	    },
-	    "hljs-section": {
-	        "fontWeight": "bold",
-	        "color": "#000080"
-	    },
-	    "hljs-deletion": {
-	        "background": "#ffc8bd"
-	    },
-	    "hljs-subst": {
-	        "fontWeight": "normal",
-	        "color": "#000"
-	    },
-	    "hljs-addition": {
-	        "background": "#baeeba"
-	    },
-	    "hljs-name": {
-	        "fontWeight": "bold",
-	        "color": "#000080"
-	    },
-	    "hljs-bullet": {
-	        "color": "#000",
-	        "background": "#d0eded",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-selector-tag": {
-	        "fontWeight": "bold",
-	        "color": "#000080"
-	    },
-	    "hljs-variable": {
-	        "color": "#660e7a"
-	    },
-	    "hljs-number": {
-	        "fontWeight": "normal"
-	    },
-	    "hljs-selector-id": {
-	        "fontWeight": "bold",
-	        "color": "#000080"
-	    },
-	    "hljs-symbol": {
-	        "color": "#000",
-	        "background": "#d0eded",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-attribute": {
-	        "fontWeight": "bold",
-	        "color": "#0000ff"
-	    },
-	    "hljs-formula": {
-	        "color": "#000",
-	        "background": "#d0eded",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-tag": {
-	        "background": "#efefef"
-	    },
-	    "hljs-keyword": {
-	        "fontWeight": "bold",
-	        "color": "#000080"
-	    },
-	    "hljs-literal": {
-	        "fontWeight": "bold",
-	        "color": "#000080"
-	    },
-	    "hljs-comment": {
-	        "color": "#808080",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-quote": {
-	        "color": "#808080",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-selector-class": {
-	        "fontWeight": "bold",
-	        "color": "#000080"
-	    },
-	    "hljs-doctag": {
-	        "textDecoration": "underline"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#660e7a"
-	    },
-	    "hljs-link": {
-	        "fontWeight": "normal"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 231 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-selector-attr": {
-	        "color": "#a8ff60"
-	    },
-	    "hljs-title": {
-	        "color": "#ffffb6"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "background": "#000",
-	        "color": "#f8f8f8"
-	    },
-	    "hljs-string": {
-	        "color": "#a8ff60"
-	    },
-	    "hljs-meta": {
-	        "color": "#7c7c7c"
-	    },
-	    "hljs-regexp": {
-	        "color": "#e9c062"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-type": {
-	        "color": "#ffffb6"
-	    },
-	    "hljs-section": {
-	        "color": "#ffffb6"
-	    },
-	    "hljs-deletion": {
-	        "color": "#ff73fd"
-	    },
-	    "hljs-subst": {
-	        "color": "#daefa3"
-	    },
-	    "hljs-addition": {
-	        "color": "#a8ff60"
-	    },
-	    "hljs-name": {
-	        "color": "#96cbfe"
-	    },
-	    "hljs-bullet": {
-	        "color": "#c6c5fe"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#96cbfe"
-	    },
-	    "hljs-variable": {
-	        "color": "#c6c5fe"
-	    },
-	    "hljs-number": {
-	        "color": "#ff73fd"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#ffffb6"
-	    },
-	    "hljs-symbol": {
-	        "color": "#c6c5fe"
-	    },
-	    "hljs-attribute": {
-	        "color": "#ffffb6"
-	    },
-	    "hljs-selector-pseudo": {
-	        "color": "#a8ff60"
-	    },
-	    "hljs-tag": {
-	        "color": "#96cbfe"
-	    },
-	    "hljs-keyword": {
-	        "color": "#96cbfe"
-	    },
-	    "hljs-literal": {
-	        "color": "#c6c5fe"
-	    },
-	    "hljs-comment": {
-	        "color": "#7c7c7c"
-	    },
-	    "hljs-quote": {
-	        "color": "#7c7c7c"
-	    },
-	    "hljs-doctag": {
-	        "color": "#ffffb6"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#c6c5fe"
-	    },
-	    "hljs-link": {
-	        "color": "#e9c062"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 232 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#f06431"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#221a0f",
-	        "color": "#d3af86",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#dc3958"
-	    },
-	    "hljs-meta": {
-	        "color": "#dc3958"
-	    },
-	    "hljs-string": {
-	        "color": "#889b4a"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#f79a32"
-	    },
-	    "hljs-type": {
-	        "color": "#f79a32"
-	    },
-	    "hljs-section": {
-	        "color": "#f06431"
-	    },
-	    "hljs-deletion": {
-	        "color": "#f79a32"
-	    },
-	    "hljs-addition": {
-	        "color": "#889b4a"
-	    },
-	    "hljs-name": {
-	        "color": "#dc3958"
-	    },
-	    "hljs-variable": {
-	        "color": "#dc3958"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#98676a"
-	    },
-	    "hljs-bullet": {
-	        "color": "#889b4a"
-	    },
-	    "hljs-params": {
-	        "color": "#f79a32"
-	    },
-	    "hljs-number": {
-	        "color": "#f79a32"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#dc3958"
-	    },
-	    "hljs-symbol": {
-	        "color": "#889b4a"
-	    },
-	    "hljs-attribute": {
-	        "color": "#f06431"
-	    },
-	    "hljs-tag": {
-	        "color": "#dc3958"
-	    },
-	    "hljs-keyword": {
-	        "color": "#98676a"
-	    },
-	    "hljs-literal": {
-	        "color": "#f79a32"
-	    },
-	    "hljs-comment": {
-	        "color": "#d6baad"
-	    },
-	    "hljs-quote": {
-	        "color": "#d6baad"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#dc3958"
-	    },
-	    "hljs-function": {
-	        "color": "#98676a"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#dc3958"
-	    },
-	    "hljs-built_in": {
-	        "color": "#f79a32"
-	    },
-	    "hljs-link": {
-	        "color": "#f79a32"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 233 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#f06431"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#fbebd4",
-	        "color": "#84613d",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#dc3958"
-	    },
-	    "hljs-meta": {
-	        "color": "#dc3958"
-	    },
-	    "hljs-string": {
-	        "color": "#889b4a"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#f79a32"
-	    },
-	    "hljs-type": {
-	        "color": "#f79a32"
-	    },
-	    "hljs-section": {
-	        "color": "#f06431"
-	    },
-	    "hljs-deletion": {
-	        "color": "#f79a32"
-	    },
-	    "hljs-addition": {
-	        "color": "#889b4a"
-	    },
-	    "hljs-name": {
-	        "color": "#dc3958"
-	    },
-	    "hljs-variable": {
-	        "color": "#dc3958"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#98676a"
-	    },
-	    "hljs-bullet": {
-	        "color": "#889b4a"
-	    },
-	    "hljs-params": {
-	        "color": "#f79a32"
-	    },
-	    "hljs-number": {
-	        "color": "#f79a32"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#dc3958"
-	    },
-	    "hljs-symbol": {
-	        "color": "#889b4a"
-	    },
-	    "hljs-attribute": {
-	        "color": "#f06431"
-	    },
-	    "hljs-tag": {
-	        "color": "#dc3958"
-	    },
-	    "hljs-keyword": {
-	        "color": "#98676a"
-	    },
-	    "hljs-literal": {
-	        "color": "#f79a32"
-	    },
-	    "hljs-comment": {
-	        "color": "#a57a4c"
-	    },
-	    "hljs-quote": {
-	        "color": "#a57a4c"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#dc3958"
-	    },
-	    "hljs-function": {
-	        "color": "#98676a"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#dc3958"
-	    },
-	    "hljs-built_in": {
-	        "color": "#f79a32"
-	    },
-	    "hljs-link": {
-	        "color": "#f79a32"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 234 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "fontWeight": "bold",
-	        "color": "navy"
-	    },
-	    "hljs": {
-	        "color": "black"
-	    },
-	    "hljs-string": {
-	        "color": "#050"
-	    },
-	    "hljs-regexp": {
-	        "color": "#800"
-	    },
-	    "hljs-template-tag": {
-	        "color": "#050"
-	    },
-	    "hljs-meta": {
-	        "color": "#00e"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-type": {
-	        "color": "#800"
-	    },
-	    "hljs-section": {
-	        "fontWeight": "bold",
-	        "color": "navy"
-	    },
-	    "hljs-deletion": {
-	        "color": "#00e"
-	    },
-	    "hljs-subst": {
-	        "color": "black"
-	    },
-	    "hljs-addition": {
-	        "color": "#050"
-	    },
-	    "hljs-bullet": {
-	        "color": "#050"
-	    },
-	    "hljs-variable": {
-	        "color": "#050"
-	    },
-	    "hljs-selector-tag": {
-	        "fontWeight": "bold",
-	        "color": "navy"
-	    },
-	    "hljs-name": {
-	        "fontWeight": "bold",
-	        "color": "navy"
-	    },
-	    "hljs-number": {
-	        "color": "#800"
-	    },
-	    "hljs-symbol": {
-	        "color": "#050"
-	    },
-	    "hljs-attribute": {
-	        "color": "#050"
-	    },
-	    "hljs-tag": {
-	        "fontWeight": "bold",
-	        "color": "navy"
-	    },
-	    "hljs-keyword": {
-	        "fontWeight": "bold",
-	        "color": "navy"
-	    },
-	    "hljs-literal": {
-	        "color": "#800"
-	    },
-	    "hljs-comment": {
-	        "color": "#777"
-	    },
-	    "hljs-quote": {
-	        "color": "#777"
-	    },
-	    "hljs-doctag": {
-	        "fontWeight": "bold",
-	        "color": "navy"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#050"
-	    },
-	    "hljs-built_in": {
-	        "fontWeight": "bold",
-	        "color": "navy"
-	    },
-	    "hljs-link": {
-	        "color": "#800"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 235 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#0048ab"
-	    },
-	    "hljs": {
-	        "color": "#00193a"
-	    },
-	    "hljs-string": {
-	        "color": "#0048ab"
-	    },
-	    "hljs-meta": {
-	        "color": "#4c81c9"
-	    },
-	    "hljs-regexp": {
-	        "color": "#4c81c9"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-type": {
-	        "color": "#0048ab"
-	    },
-	    "hljs-section": {
-	        "color": "#0048ab"
-	    },
-	    "hljs-deletion": {
-	        "color": "#4c81c9"
-	    },
-	    "hljs-subst": {
-	        "color": "#4c81c9"
-	    },
-	    "hljs-addition": {
-	        "color": "#0048ab"
-	    },
-	    "hljs-name": {
-	        "color": "#0048ab"
-	    },
-	    "hljs-variable": {
-	        "color": "#4c81c9"
-	    },
-	    "hljs-selector-tag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-bullet": {
-	        "color": "#4c81c9"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#0048ab"
-	    },
-	    "hljs-symbol": {
-	        "color": "#4c81c9"
-	    },
-	    "hljs-attribute": {
-	        "color": "#4c81c9"
-	    },
-	    "hljs-tag": {
-	        "color": "#0048ab"
-	    },
-	    "hljs-keyword": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-literal": {
-	        "color": "#0048ab"
-	    },
-	    "hljs-comment": {
-	        "color": "#738191"
-	    },
-	    "hljs-quote": {
-	        "color": "#0048ab"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#0048ab"
-	    },
-	    "hljs-doctag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-built_in": {
-	        "color": "#0048ab"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#4c81c9"
-	    },
-	    "hljs-link": {
-	        "color": "#4c81c9"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    }
-	};
-
-/***/ },
-/* 236 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-selector-attr": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-title": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "background": "#272822",
-	        "color": "#ddd"
-	    },
-	    "hljs-regexp": {
-	        "color": "#bf79db"
-	    },
-	    "hljs-string": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-template-tag": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-emphasis": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-strong": {
-	        "color": "#f92672"
-	    },
-	    "hljs-type": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-section": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-deletion": {
-	        "color": "#75715e"
-	    },
-	    "hljs-subst": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-addition": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-name": {
-	        "color": "#f92672"
-	    },
-	    "hljs-class .hljs-title": {
-	        "color": "white"
-	    },
-	    "hljs-selector-tag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-bullet": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-code": {
-	        "color": "#66d9ef"
-	    },
-	    "hljs-variable": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-meta": {
-	        "color": "#75715e"
-	    },
-	    "hljs-symbol": {
-	        "color": "#bf79db"
-	    },
-	    "hljs-attribute": {
-	        "color": "#bf79db"
-	    },
-	    "hljs-selector-pseudo": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-tag": {
-	        "color": "#f92672"
-	    },
-	    "hljs-keyword": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-literal": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-comment": {
-	        "color": "#75715e"
-	    },
-	    "hljs-quote": {
-	        "color": "#75715e"
-	    },
-	    "hljs-built_in": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-link": {
-	        "color": "#bf79db"
-	    },
-	    "hljs-doctag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-selector-id": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 237 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-selector-attr": {
-	        "color": "#e6db74"
-	    },
-	    "hljs-title": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs": {
-	        "color": "#f8f8f2"
-	    },
-	    "hljs-regexp": {
-	        "color": "#ae81ff"
-	    },
-	    "hljs-string": {
-	        "color": "#e6db74"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#e6db74"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-type": {
-	        "color": "#e6db74"
-	    },
-	    "hljs-section": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-subst": {
-	        "color": "#f8f8f2"
-	    },
-	    "hljs-addition": {
-	        "color": "#e6db74"
-	    },
-	    "hljs-bullet": {
-	        "color": "#ae81ff"
-	    },
-	    "hljs-name": {
-	        "color": "#f92672"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#f92672"
-	    },
-	    "hljs-class .hljs-title": {
-	        "color": "#f8f8f2"
-	    },
-	    "hljs-code": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-params": {
-	        "color": "#f8f8f2"
-	    },
-	    "hljs-variable": {
-	        "color": "#e6db74"
-	    },
-	    "hljs-number": {
-	        "color": "#ae81ff"
-	    },
-	    "hljs-symbol": {
-	        "color": "#66d9ef"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#e6db74"
-	    },
-	    "hljs-attribute": {
-	        "color": "#66d9ef"
-	    },
-	    "hljs-attr": {
-	        "color": "#f92672"
-	    },
-	    "hljs-selector-pseudo": {
-	        "color": "#e6db74"
-	    },
-	    "hljs-tag": {
-	        "color": "#f8f8f2"
-	    },
-	    "hljs-keyword": {
-	        "color": "#f92672"
-	    },
-	    "hljs-literal": {
-	        "color": "#ae81ff"
-	    },
-	    "hljs-quote": {
-	        "color": "#ae81ff"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#a6e22e"
-	    },
-	    "hljs-built_in": {
-	        "color": "#e6db74"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#e6db74"
-	    },
-	    "hljs-link": {
-	        "color": "#ae81ff"
-	    },
-	    "hljs-comment": {
-	        "color": "#75715e"
-	    },
-	    "hljs-deletion": {
-	        "color": "#75715e"
-	    },
-	    "hljs-meta": {
-	        "color": "#75715e"
-	    }
-	};
-
-/***/ },
-/* 238 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-selector-attr": {
-	        "color": "#8cbbad"
-	    },
-	    "hljs": {
-	        "color": "#e0e2e4"
-	    },
-	    "hljs-regexp": {
-	        "color": "#d39745"
-	    },
-	    "hljs-meta": {
-	        "color": "#557182"
-	    },
-	    "hljs-template-tag": {
-	        "color": "#8cbbad"
-	    },
-	    "hljs-string": {
-	        "color": "#ec7600"
-	    },
-	    "hljs-emphasis": {
-	        "color": "#8cbbad"
-	    },
-	    "hljs-type": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-section": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-deletion": {
-	        "color": "#818e96"
-	    },
-	    "hljs-subst": {
-	        "color": "#8cbbad"
-	    },
-	    "hljs-addition": {
-	        "color": "#8cbbad"
-	    },
-	    "hljs-class .hljs-title": {
-	        "color": "white"
-	    },
-	    "hljs-name": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-selector-tag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-bullet": {
-	        "color": "#8cbbad"
-	    },
-	    "hljs-code": {
-	        "color": "white"
-	    },
-	    "hljs-variable": {
-	        "color": "#8cbbad"
-	    },
-	    "hljs-number": {
-	        "color": "#ffcd22"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#93c763"
-	    },
-	    "hljs-symbol": {
-	        "color": "#ec7600"
-	    },
-	    "hljs-attribute": {
-	        "color": "#668bb0"
-	    },
-	    "hljs-selector-pseudo": {
-	        "color": "#8cbbad"
-	    },
-	    "hljs-tag": {
-	        "color": "#8cbbad"
-	    },
-	    "hljs-keyword": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-literal": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-comment": {
-	        "color": "#818e96"
-	    },
-	    "hljs-quote": {
-	        "color": "#818e96"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#A082BD"
-	    },
-	    "hljs-built_in": {
-	        "color": "#8cbbad"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#8cbbad"
-	    },
-	    "hljs-link": {
-	        "color": "#d39745"
-	    },
-	    "hljs-doctag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-title": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 239 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#fec418"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#2f1e2e",
-	        "color": "#a39e9b",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-meta": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-string": {
-	        "color": "#48b685"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#f99b15"
-	    },
-	    "hljs-type": {
-	        "color": "#f99b15"
-	    },
-	    "hljs-section": {
-	        "color": "#fec418"
-	    },
-	    "hljs-deletion": {
-	        "color": "#f99b15"
-	    },
-	    "hljs-addition": {
-	        "color": "#48b685"
-	    },
-	    "hljs-name": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-variable": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#815ba4"
-	    },
-	    "hljs-bullet": {
-	        "color": "#48b685"
-	    },
-	    "hljs-params": {
-	        "color": "#f99b15"
-	    },
-	    "hljs-number": {
-	        "color": "#f99b15"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-symbol": {
-	        "color": "#48b685"
-	    },
-	    "hljs-attribute": {
-	        "color": "#fec418"
-	    },
-	    "hljs-tag": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-keyword": {
-	        "color": "#815ba4"
-	    },
-	    "hljs-literal": {
-	        "color": "#f99b15"
-	    },
-	    "hljs-comment": {
-	        "color": "#8d8687"
-	    },
-	    "hljs-quote": {
-	        "color": "#8d8687"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-built_in": {
-	        "color": "#f99b15"
-	    },
-	    "hljs-link": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 240 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#fec418"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#e7e9db",
-	        "color": "#4f424c",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-meta": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-string": {
-	        "color": "#48b685"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#f99b15"
-	    },
-	    "hljs-type": {
-	        "color": "#f99b15"
-	    },
-	    "hljs-section": {
-	        "color": "#fec418"
-	    },
-	    "hljs-deletion": {
-	        "color": "#f99b15"
-	    },
-	    "hljs-addition": {
-	        "color": "#48b685"
-	    },
-	    "hljs-name": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-variable": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#815ba4"
-	    },
-	    "hljs-bullet": {
-	        "color": "#48b685"
-	    },
-	    "hljs-params": {
-	        "color": "#f99b15"
-	    },
-	    "hljs-number": {
-	        "color": "#f99b15"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-symbol": {
-	        "color": "#48b685"
-	    },
-	    "hljs-attribute": {
-	        "color": "#fec418"
-	    },
-	    "hljs-tag": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-keyword": {
-	        "color": "#815ba4"
-	    },
-	    "hljs-literal": {
-	        "color": "#f99b15"
-	    },
-	    "hljs-comment": {
-	        "color": "#776e71"
-	    },
-	    "hljs-quote": {
-	        "color": "#776e71"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-built_in": {
-	        "color": "#f99b15"
-	    },
-	    "hljs-link": {
-	        "color": "#ef6155"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 241 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#ffb03b"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "color": "#dccf8f",
-	        "background": "url(./pojoaque.jpg) repeat scroll left top #181914"
-	    },
-	    "hljs-string": {
-	        "color": "#468966"
-	    },
-	    "hljs-regexp": {
-	        "color": "#468966"
-	    },
-	    "hljs-meta": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-type": {
-	        "color": "#b58900"
-	    },
-	    "hljs-section": {
-	        "color": "#ffb03b"
-	    },
-	    "hljs-deletion": {
-	        "color": "#dc322f"
-	    },
-	    "hljs-subst": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-addition": {
-	        "color": "#b64926"
-	    },
-	    "hljs-name": {
-	        "color": "#ffb03b"
-	    },
-	    "hljs-variable": {
-	        "color": "#b58900"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#b64926"
-	    },
-	    "hljs-class .hljs-title": {
-	        "color": "#b58900"
-	    },
-	    "hljs-bullet": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-number": {
-	        "color": "#468966"
-	    },
-	    "hljs-symbol": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#d3a60c"
-	    },
-	    "hljs-attribute": {
-	        "color": "#b89859"
-	    },
-	    "hljs-formula": {
-	        "background": "#073642"
-	    },
-	    "hljs-tag": {
-	        "color": "#b58900"
-	    },
-	    "hljs-keyword": {
-	        "color": "#b64926"
-	    },
-	    "hljs-literal": {
-	        "color": "#b64926"
-	    },
-	    "hljs-comment": {
-	        "color": "#586e75",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-quote": {
-	        "color": "#586e75",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#d3a60c"
-	    },
-	    "hljs-doctag": {
-	        "color": "#468966"
-	    },
-	    "hljs-built_in": {
-	        "color": "#ffb03b"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#b58900"
-	    },
-	    "hljs-link": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 242 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#ffc66d"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "background": "#232323",
-	        "color": "#e6e1dc"
-	    },
-	    "hljs-string": {
-	        "color": "#a5c261"
-	    },
-	    "hljs-regexp": {
-	        "color": "#a5c261"
-	    },
-	    "hljs-meta": {
-	        "color": "#9b859d"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#6d9cbe"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-type": {
-	        "color": "#da4939"
-	    },
-	    "hljs-section": {
-	        "color": "#ffc66d"
-	    },
-	    "hljs-deletion": {
-	        "backgroundColor": "#600",
-	        "color": "#e6e1dc",
-	        "display": "inline-block",
-	        "width": "100%"
-	    },
-	    "hljs-subst": {
-	        "color": "#519f50"
-	    },
-	    "hljs-addition": {
-	        "backgroundColor": "#144212",
-	        "color": "#e6e1dc",
-	        "display": "inline-block",
-	        "width": "100%"
-	    },
-	    "hljs-name": {
-	        "color": "#e8bf6a"
-	    },
-	    "hljs-variable": {
-	        "color": "#a5c261"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#c26230"
-	    },
-	    "hljs-bullet": {
-	        "color": "#6d9cbe"
-	    },
-	    "hljs-params": {
-	        "color": "#d0d0ff"
-	    },
-	    "hljs-number": {
-	        "color": "#a5c261"
-	    },
-	    "hljs-symbol": {
-	        "color": "#6d9cbe"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#8b98ab"
-	    },
-	    "hljs-attribute": {
-	        "color": "#cda869"
-	    },
-	    "hljs-attr": {
-	        "color": "#6d9cbe"
-	    },
-	    "hljs-tag": {
-	        "color": "#e8bf6a"
-	    },
-	    "hljs-keyword": {
-	        "color": "#c26230"
-	    },
-	    "hljs-comment": {
-	        "color": "#bc9458",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-quote": {
-	        "color": "#bc9458",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#9b703f"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#a5c261"
-	    },
-	    "hljs-built_in": {
-	        "color": "#6d9cbe"
-	    },
-	    "hljs-link": {
-	        "textDecoration": "underline"
-	    }
-	};
-
-/***/ },
-/* 243 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-selector-attr": {
-	        "color": "#f99157"
-	    },
-	    "hljs-title": {
-	        "color": "#b5bd68"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "background": "#474949",
-	        "color": "#d1d9e1"
-	    },
-	    "hljs-string": {
-	        "color": "#8abeb7"
-	    },
-	    "hljs-regexp": {
-	        "color": "#8abeb7"
-	    },
-	    "hljs-meta": {
-	        "color": "#f99157"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-type": {
-	        "color": "#cc99cc"
-	    },
-	    "hljs-section": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-deletion": {
-	        "color": "#dc322f"
-	    },
-	    "hljs-subst": {
-	        "color": "#f99157"
-	    },
-	    "hljs-addition": {
-	        "color": "#cc99cc"
-	    },
-	    "hljs-name": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-variable": {
-	        "color": "#ffcc66"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#cc99cc"
-	    },
-	    "hljs-class .hljs-title": {
-	        "color": "#ffcc66"
-	    },
-	    "hljs-bullet": {
-	        "color": "#f99157"
-	    },
-	    "hljs-number": {
-	        "color": "#f99157"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#ffcc66"
-	    },
-	    "hljs-symbol": {
-	        "color": "#f99157"
-	    },
-	    "hljs-attribute": {
-	        "color": "#81a2be"
-	    },
-	    "hljs-formula": {
-	        "background": "#eee8d5"
-	    },
-	    "hljs-selector-pseudo": {
-	        "color": "#f99157"
-	    },
-	    "hljs-attr": {
-	        "color": "#81a2be"
-	    },
-	    "hljs-keyword": {
-	        "color": "#cc99cc"
-	    },
-	    "hljs-literal": {
-	        "color": "#cc99cc"
-	    },
-	    "hljs-comment": {
-	        "color": "#969896",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-quote": {
-	        "color": "#969896",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-doctag": {
-	        "color": "#8abeb7"
-	    },
-	    "hljs-built_in": {
-	        "color": "#b5bd68"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#ffcc66"
-	    },
-	    "hljs-link": {
-	        "color": "#f99157"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    }
-	};
-
-/***/ },
-/* 244 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs": {
-	        "color": "#3e5915"
-	    },
-	    "hljs-string": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-meta": {
-	        "color": "#e60415"
-	    },
-	    "hljs-template-tag": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-type": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-section": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-deletion": {
-	        "color": "#e60415"
-	    },
-	    "hljs-subst": {
-	        "color": "#3e5915"
-	    },
-	    "hljs-addition": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-bullet": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-variable": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-selector-tag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-name": {
-	        "fontWeight": "bold"
-	    },
-	    "re": {
-	        "background": "#f6f6ae url(./school-book.png)",
-	        "borderTop": "solid 2px #d2e8b9",
-	        "borderBottom": "solid 1px #d2e8b9"
-	    },
-	    "hljs-symbol": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-selector-id": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-attribute": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-keyword": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-literal": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-comment": {
-	        "color": "#e60415"
-	    },
-	    "hljs-quote": {
-	        "color": "#e60415"
-	    },
-	    "hljs-doctag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-built_in": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-link": {
-	        "color": "#2c009f"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    }
-	};
-
-/***/ },
-/* 245 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-selector-attr": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-title": {
-	        "color": "#268bd2"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "background": "#002b36",
-	        "color": "#839496"
-	    },
-	    "hljs-string": {
-	        "color": "#2aa198"
-	    },
-	    "hljs-regexp": {
-	        "color": "#2aa198"
-	    },
-	    "hljs-meta": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-type": {
-	        "color": "#b58900"
-	    },
-	    "hljs-section": {
-	        "color": "#268bd2"
-	    },
-	    "hljs-deletion": {
-	        "color": "#dc322f"
-	    },
-	    "hljs-subst": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-addition": {
-	        "color": "#859900"
-	    },
-	    "hljs-name": {
-	        "color": "#268bd2"
-	    },
-	    "hljs-meta .hljs-meta-string": {
-	        "color": "#2aa198"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#859900"
-	    },
-	    "hljs-class .hljs-title": {
-	        "color": "#b58900"
-	    },
-	    "hljs-variable": {
-	        "color": "#b58900"
-	    },
-	    "hljs-bullet": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-number": {
-	        "color": "#2aa198"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#268bd2"
-	    },
-	    "hljs-symbol": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-attribute": {
-	        "color": "#b58900"
-	    },
-	    "hljs-formula": {
-	        "background": "#073642"
-	    },
-	    "hljs-attr": {
-	        "color": "#b58900"
-	    },
-	    "hljs-selector-pseudo": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-keyword": {
-	        "color": "#859900"
-	    },
-	    "hljs-literal": {
-	        "color": "#2aa198"
-	    },
-	    "hljs-meta .hljs-keyword": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-comment": {
-	        "color": "#586e75"
-	    },
-	    "hljs-quote": {
-	        "color": "#586e75"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#268bd2"
-	    },
-	    "hljs-doctag": {
-	        "color": "#2aa198"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#b58900"
-	    },
-	    "hljs-built_in": {
-	        "color": "#dc322f"
-	    },
-	    "hljs-link": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 246 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-selector-attr": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-title": {
-	        "color": "#268bd2"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "background": "#fdf6e3",
-	        "color": "#657b83"
-	    },
-	    "hljs-string": {
-	        "color": "#2aa198"
-	    },
-	    "hljs-regexp": {
-	        "color": "#2aa198"
-	    },
-	    "hljs-meta": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-type": {
-	        "color": "#b58900"
-	    },
-	    "hljs-section": {
-	        "color": "#268bd2"
-	    },
-	    "hljs-deletion": {
-	        "color": "#dc322f"
-	    },
-	    "hljs-subst": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-addition": {
-	        "color": "#859900"
-	    },
-	    "hljs-name": {
-	        "color": "#268bd2"
-	    },
-	    "hljs-meta .hljs-meta-string": {
-	        "color": "#2aa198"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#859900"
-	    },
-	    "hljs-class .hljs-title": {
-	        "color": "#b58900"
-	    },
-	    "hljs-variable": {
-	        "color": "#b58900"
-	    },
-	    "hljs-bullet": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-number": {
-	        "color": "#2aa198"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#268bd2"
-	    },
-	    "hljs-symbol": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-attribute": {
-	        "color": "#b58900"
-	    },
-	    "hljs-formula": {
-	        "background": "#eee8d5"
-	    },
-	    "hljs-attr": {
-	        "color": "#b58900"
-	    },
-	    "hljs-selector-pseudo": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-keyword": {
-	        "color": "#859900"
-	    },
-	    "hljs-literal": {
-	        "color": "#2aa198"
-	    },
-	    "hljs-meta .hljs-keyword": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-comment": {
-	        "color": "#93a1a1"
-	    },
-	    "hljs-quote": {
-	        "color": "#93a1a1"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#268bd2"
-	    },
-	    "hljs-doctag": {
-	        "color": "#2aa198"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#b58900"
-	    },
-	    "hljs-built_in": {
-	        "color": "#dc322f"
-	    },
-	    "hljs-link": {
-	        "color": "#cb4b16"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 247 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#89bdff"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "background": "#000",
-	        "color": "#f8f8f8"
-	    },
-	    "hljs-string": {
-	        "color": "#65b042"
-	    },
-	    "hljs-regexp": {
-	        "color": "#e9c062"
-	    },
-	    "hljs-meta": {
-	        "color": "#8996a8"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-type": {
-	        "color": "#e28964"
-	    },
-	    "hljs-section": {
-	        "color": "#89bdff"
-	    },
-	    "hljs-deletion": {
-	        "backgroundColor": "#420e09",
-	        "color": "#f8f8f8"
-	    },
-	    "hljs-subst": {
-	        "color": "#daefa3"
-	    },
-	    "hljs-addition": {
-	        "backgroundColor": "#253b22",
-	        "color": "#f8f8f8"
-	    },
-	    "hljs-name": {
-	        "color": "#89bdff"
-	    },
-	    "hljs-class .hljs-title": {
-	        "textDecoration": "underline"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#e28964"
-	    },
-	    "hljs-bullet": {
-	        "color": "#3387cc"
-	    },
-	    "hljs-variable": {
-	        "color": "#3e87e3"
-	    },
-	    "hljs-params": {
-	        "color": "#3e87e3"
-	    },
-	    "hljs-number": {
-	        "color": "#3387cc"
-	    },
-	    "hljs-symbol": {
-	        "color": "#3387cc"
-	    },
-	    "hljs-formula": {
-	        "backgroundColor": "#0e2231",
-	        "color": "#f8f8f8",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-attribute": {
-	        "color": "#cda869"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#8b98ab"
-	    },
-	    "hljs-tag": {
-	        "color": "#89bdff"
-	    },
-	    "hljs-keyword": {
-	        "color": "#e28964"
-	    },
-	    "hljs-comment": {
-	        "color": "#aeaeae",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-quote": {
-	        "color": "#aeaeae",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#9b703f"
-	    },
-	    "hljs-doctag": {
-	        "textDecoration": "underline"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#3e87e3"
-	    },
-	    "hljs-link": {
-	        "color": "#e9c062"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 248 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#4271ae"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "white",
-	        "color": "#4d4d4c",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#c82829"
-	    },
-	    "hljs-meta": {
-	        "color": "#f5871f"
-	    },
-	    "hljs-string": {
-	        "color": "#718c00"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#f5871f"
-	    },
-	    "hljs-type": {
-	        "color": "#f5871f"
-	    },
-	    "hljs-section": {
-	        "color": "#4271ae"
-	    },
-	    "hljs-deletion": {
-	        "color": "#c82829"
-	    },
-	    "hljs-addition": {
-	        "color": "#718c00"
-	    },
-	    "hljs-name": {
-	        "color": "#c82829"
-	    },
-	    "hljs-variable": {
-	        "color": "#c82829"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#8959a8"
-	    },
-	    "hljs-bullet": {
-	        "color": "#718c00"
-	    },
-	    "hljs-params": {
-	        "color": "#f5871f"
-	    },
-	    "hljs-number": {
-	        "color": "#f5871f"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#c82829"
-	    },
-	    "hljs-symbol": {
-	        "color": "#718c00"
-	    },
-	    "hljs-attribute": {
-	        "color": "#eab700"
-	    },
-	    "hljs-tag": {
-	        "color": "#c82829"
-	    },
-	    "hljs-keyword": {
-	        "color": "#8959a8"
-	    },
-	    "hljs-literal": {
-	        "color": "#f5871f"
-	    },
-	    "hljs-comment": {
-	        "color": "#8e908c"
-	    },
-	    "hljs-quote": {
-	        "color": "#8e908c"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#c82829"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#c82829"
-	    },
-	    "hljs-built_in": {
-	        "color": "#f5871f"
-	    },
-	    "hljs-link": {
-	        "color": "#f5871f"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 249 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#81a2be"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#1d1f21",
-	        "color": "#c5c8c6",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#cc6666"
-	    },
-	    "hljs-meta": {
-	        "color": "#de935f"
-	    },
-	    "hljs-string": {
-	        "color": "#b5bd68"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#de935f"
-	    },
-	    "hljs-type": {
-	        "color": "#de935f"
-	    },
-	    "hljs-section": {
-	        "color": "#81a2be"
-	    },
-	    "hljs-deletion": {
-	        "color": "#cc6666"
-	    },
-	    "hljs-addition": {
-	        "color": "#b5bd68"
-	    },
-	    "hljs-name": {
-	        "color": "#cc6666"
-	    },
-	    "hljs-variable": {
-	        "color": "#cc6666"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#b294bb"
-	    },
-	    "hljs-bullet": {
-	        "color": "#b5bd68"
-	    },
-	    "hljs-params": {
-	        "color": "#de935f"
-	    },
-	    "hljs-number": {
-	        "color": "#de935f"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#cc6666"
-	    },
-	    "hljs-symbol": {
-	        "color": "#b5bd68"
-	    },
-	    "hljs-attribute": {
-	        "color": "#f0c674"
-	    },
-	    "hljs-tag": {
-	        "color": "#cc6666"
-	    },
-	    "hljs-keyword": {
-	        "color": "#b294bb"
-	    },
-	    "hljs-literal": {
-	        "color": "#de935f"
-	    },
-	    "hljs-comment": {
-	        "color": "#969896"
-	    },
-	    "hljs-quote": {
-	        "color": "#969896"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#cc6666"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#cc6666"
-	    },
-	    "hljs-built_in": {
-	        "color": "#de935f"
-	    },
-	    "hljs-link": {
-	        "color": "#de935f"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 250 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#bbdaff"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#002451",
-	        "color": "white",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#ff9da4"
-	    },
-	    "hljs-meta": {
-	        "color": "#ffc58f"
-	    },
-	    "hljs-string": {
-	        "color": "#d1f1a9"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#ffc58f"
-	    },
-	    "hljs-type": {
-	        "color": "#ffc58f"
-	    },
-	    "hljs-section": {
-	        "color": "#bbdaff"
-	    },
-	    "hljs-deletion": {
-	        "color": "#ff9da4"
-	    },
-	    "hljs-addition": {
-	        "color": "#d1f1a9"
-	    },
-	    "hljs-name": {
-	        "color": "#ff9da4"
-	    },
-	    "hljs-variable": {
-	        "color": "#ff9da4"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#ebbbff"
-	    },
-	    "hljs-bullet": {
-	        "color": "#d1f1a9"
-	    },
-	    "hljs-params": {
-	        "color": "#ffc58f"
-	    },
-	    "hljs-number": {
-	        "color": "#ffc58f"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#ff9da4"
-	    },
-	    "hljs-symbol": {
-	        "color": "#d1f1a9"
-	    },
-	    "hljs-attribute": {
-	        "color": "#ffeead"
-	    },
-	    "hljs-tag": {
-	        "color": "#ff9da4"
-	    },
-	    "hljs-keyword": {
-	        "color": "#ebbbff"
-	    },
-	    "hljs-literal": {
-	        "color": "#ffc58f"
-	    },
-	    "hljs-comment": {
-	        "color": "#7285b7"
-	    },
-	    "hljs-quote": {
-	        "color": "#7285b7"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#ff9da4"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#ff9da4"
-	    },
-	    "hljs-built_in": {
-	        "color": "#ffc58f"
-	    },
-	    "hljs-link": {
-	        "color": "#ffc58f"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 251 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#7aa6da"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "black",
-	        "color": "#eaeaea",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#d54e53"
-	    },
-	    "hljs-meta": {
-	        "color": "#e78c45"
-	    },
-	    "hljs-string": {
-	        "color": "#b9ca4a"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#e78c45"
-	    },
-	    "hljs-type": {
-	        "color": "#e78c45"
-	    },
-	    "hljs-section": {
-	        "color": "#7aa6da"
-	    },
-	    "hljs-deletion": {
-	        "color": "#d54e53"
-	    },
-	    "hljs-addition": {
-	        "color": "#b9ca4a"
-	    },
-	    "hljs-name": {
-	        "color": "#d54e53"
-	    },
-	    "hljs-variable": {
-	        "color": "#d54e53"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#c397d8"
-	    },
-	    "hljs-bullet": {
-	        "color": "#b9ca4a"
-	    },
-	    "hljs-params": {
-	        "color": "#e78c45"
-	    },
-	    "hljs-number": {
-	        "color": "#e78c45"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#d54e53"
-	    },
-	    "hljs-symbol": {
-	        "color": "#b9ca4a"
-	    },
-	    "hljs-attribute": {
-	        "color": "#e7c547"
-	    },
-	    "hljs-tag": {
-	        "color": "#d54e53"
-	    },
-	    "hljs-keyword": {
-	        "color": "#c397d8"
-	    },
-	    "hljs-literal": {
-	        "color": "#e78c45"
-	    },
-	    "hljs-comment": {
-	        "color": "#969896"
-	    },
-	    "hljs-quote": {
-	        "color": "#969896"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#d54e53"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#d54e53"
-	    },
-	    "hljs-built_in": {
-	        "color": "#e78c45"
-	    },
-	    "hljs-link": {
-	        "color": "#e78c45"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 252 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#6699cc"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "background": "#2d2d2d",
-	        "color": "#cccccc",
-	        "padding": "0.5em"
-	    },
-	    "hljs-regexp": {
-	        "color": "#f2777a"
-	    },
-	    "hljs-meta": {
-	        "color": "#f99157"
-	    },
-	    "hljs-string": {
-	        "color": "#99cc99"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#f99157"
-	    },
-	    "hljs-type": {
-	        "color": "#f99157"
-	    },
-	    "hljs-section": {
-	        "color": "#6699cc"
-	    },
-	    "hljs-deletion": {
-	        "color": "#f2777a"
-	    },
-	    "hljs-addition": {
-	        "color": "#99cc99"
-	    },
-	    "hljs-name": {
-	        "color": "#f2777a"
-	    },
-	    "hljs-variable": {
-	        "color": "#f2777a"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#cc99cc"
-	    },
-	    "hljs-bullet": {
-	        "color": "#99cc99"
-	    },
-	    "hljs-params": {
-	        "color": "#f99157"
-	    },
-	    "hljs-number": {
-	        "color": "#f99157"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#f2777a"
-	    },
-	    "hljs-symbol": {
-	        "color": "#99cc99"
-	    },
-	    "hljs-attribute": {
-	        "color": "#ffcc66"
-	    },
-	    "hljs-tag": {
-	        "color": "#f2777a"
-	    },
-	    "hljs-keyword": {
-	        "color": "#cc99cc"
-	    },
-	    "hljs-literal": {
-	        "color": "#f99157"
-	    },
-	    "hljs-comment": {
-	        "color": "#999999"
-	    },
-	    "hljs-quote": {
-	        "color": "#999999"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#f2777a"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#f2777a"
-	    },
-	    "hljs-built_in": {
-	        "color": "#f99157"
-	    },
-	    "hljs-link": {
-	        "color": "#f99157"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 253 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-selector-attr": {
-	        "color": "#2b91af"
-	    },
-	    "hljs-title": {
-	        "color": "#a31515"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "background": "white",
-	        "color": "black"
-	    },
-	    "hljs-string": {
-	        "color": "#a31515"
-	    },
-	    "hljs-meta": {
-	        "color": "#2b91af"
-	    },
-	    "hljs-template-tag": {
-	        "color": "#a31515"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-type": {
-	        "color": "#a31515"
-	    },
-	    "hljs-section": {
-	        "color": "#a31515"
-	    },
-	    "hljs-deletion": {
-	        "color": "#2b91af"
-	    },
-	    "hljs-addition": {
-	        "color": "#a31515"
-	    },
-	    "hljs-name": {
-	        "color": "#00f"
-	    },
-	    "hljs-variable": {
-	        "color": "#008000"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#00f"
-	    },
-	    "hljs-bullet": {
-	        "color": "#00b0e8"
-	    },
-	    "hljs-symbol": {
-	        "color": "#00b0e8"
-	    },
-	    "hljs-attribute": {
-	        "color": "#a31515"
-	    },
-	    "hljs-selector-pseudo": {
-	        "color": "#2b91af"
-	    },
-	    "hljs-attr": {
-	        "color": "#f00"
-	    },
-	    "hljs-tag": {
-	        "color": "#00f"
-	    },
-	    "hljs-keyword": {
-	        "color": "#00f"
-	    },
-	    "hljs-literal": {
-	        "color": "#a31515"
-	    },
-	    "hljs-comment": {
-	        "color": "#008000"
-	    },
-	    "hljs-quote": {
-	        "color": "#008000"
-	    },
-	    "hljs-doctag": {
-	        "color": "#808080"
-	    },
-	    "hljs-built_in": {
-	        "color": "#00f"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#a31515"
-	    },
-	    "hljs-link": {
-	        "color": "#00b0e8"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 254 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#1c00cf"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "background": "#fff",
-	        "color": "black"
-	    },
-	    "hljs-string": {
-	        "color": "#c41a16"
-	    },
-	    "hljs-regexp": {
-	        "color": "#080"
-	    },
-	    "hljs-meta": {
-	        "color": "#1c00cf"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#5c2699"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-type": {
-	        "color": "#5c2699"
-	    },
-	    "hljs-section": {
-	        "color": "#5c2699"
-	    },
-	    "hljs-deletion": {
-	        "backgroundColor": "#ffc8bd"
-	    },
-	    "hljs-subst": {
-	        "color": "#000"
-	    },
-	    "hljs-addition": {
-	        "backgroundColor": "#baeeba"
-	    },
-	    "hljs-name": {
-	        "color": "#008"
-	    },
-	    "hljs-variable": {
-	        "color": "#660"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#aa0d91"
-	    },
-	    "hljs-bullet": {
-	        "color": "#1c00cf"
-	    },
-	    "hljs-params": {
-	        "color": "#5c2699"
-	    },
-	    "hljs-class .hljs-title": {
-	        "color": "#5c2699"
-	    },
-	    "hljs-number": {
-	        "color": "#1c00cf"
-	    },
-	    "hljs-symbol": {
-	        "color": "#1c00cf"
-	    },
-	    "hljs-formula": {
-	        "backgroundColor": "#eee",
-	        "fontStyle": "italic"
-	    },
-	    "hljs-attribute": {
-	        "color": "#000"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#9b703f"
-	    },
-	    "hljs-attr": {
-	        "color": "#5c2699"
-	    },
-	    "hljs-tag": {
-	        "color": "#1c00cf"
-	    },
-	    "hljs-keyword": {
-	        "color": "#aa0d91"
-	    },
-	    "hljs-literal": {
-	        "color": "#aa0d91"
-	    },
-	    "hljs-comment": {
-	        "color": "#006a00"
-	    },
-	    "hljs-quote": {
-	        "color": "#006a00"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#9b703f"
-	    },
-	    "hljs-doctag": {
-	        "fontWeight": "bold"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#660"
-	    },
-	    "hljs-built_in": {
-	        "color": "#5c2699"
-	    },
-	    "hljs-link": {
-	        "color": "#080"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    }
-	};
-
-/***/ },
-/* 255 */
-/***/ function(module, exports) {
-
-	"use strict";
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.default = {
-	    "hljs-title": {
-	        "color": "#efef8f"
-	    },
-	    "hljs": {
-	        "display": "block",
-	        "overflowX": "auto",
-	        "padding": "0.5em",
-	        "background": "#3f3f3f",
-	        "color": "#dcdcdc"
-	    },
-	    "hljs-template-tag": {
-	        "color": "#dcdcdc"
-	    },
-	    "hljs-string": {
-	        "color": "#cc9393"
-	    },
-	    "hljs-meta": {
-	        "color": "#7f9f7f"
-	    },
-	    "hljs-emphasis": {
-	        "fontStyle": "italic"
-	    },
-	    "hljs-builtin-name": {
-	        "color": "#cc9393"
-	    },
-	    "hljs-type": {
-	        "color": "#efef8f"
-	    },
-	    "hljs-section": {
-	        "color": "#efef8f"
-	    },
-	    "hljs-deletion": {
-	        "color": "#cc9393"
-	    },
-	    "hljs-subst": {
-	        "color": "#8f8f8f"
-	    },
-	    "hljs-addition": {
-	        "color": "#7f9f7f"
-	    },
-	    "hljs-name": {
-	        "color": "#efef8f"
-	    },
-	    "hljs-variable": {
-	        "color": "#efdcbc"
-	    },
-	    "hljs-selector-tag": {
-	        "color": "#e3ceab"
-	    },
-	    "hljs-bullet": {
-	        "color": "#dca3a3"
-	    },
-	    "hljs-number": {
-	        "color": "#8cd0d3"
-	    },
-	    "hljs-selector-id": {
-	        "color": "#efef8f"
-	    },
-	    "hljs-symbol": {
-	        "color": "#dca3a3"
-	    },
-	    "hljs-attribute": {
-	        "color": "#efdcbc"
-	    },
-	    "hljs-tag": {
-	        "color": "#e3ceab"
-	    },
-	    "hljs-keyword": {
-	        "color": "#e3ceab"
-	    },
-	    "hljs-literal": {
-	        "color": "#efefaf"
-	    },
-	    "hljs-comment": {
-	        "color": "#7f9f7f"
-	    },
-	    "hljs-quote": {
-	        "color": "#7f9f7f"
-	    },
-	    "hljs-selector-class": {
-	        "color": "#efef8f"
-	    },
-	    "hljs-template-variable": {
-	        "color": "#efdcbc"
-	    },
-	    "hljs-built_in": {
-	        "color": "#cc9393"
-	    },
-	    "hljs-link": {
-	        "color": "#dca3a3"
-	    },
-	    "hljs-strong": {
-	        "fontWeight": "bold"
-	    }
-	};
-
-/***/ },
-/* 256 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var map = {
-		"./1c": 257,
-		"./1c.js": 257,
-		"./accesslog": 258,
-		"./accesslog.js": 258,
-		"./actionscript": 259,
-		"./actionscript.js": 259,
-		"./apache": 260,
-		"./apache.js": 260,
-		"./applescript": 261,
-		"./applescript.js": 261,
-		"./arduino": 262,
-		"./arduino.js": 262,
-		"./armasm": 263,
-		"./armasm.js": 263,
-		"./asciidoc": 264,
-		"./asciidoc.js": 264,
-		"./aspectj": 265,
-		"./aspectj.js": 265,
-		"./autohotkey": 266,
-		"./autohotkey.js": 266,
-		"./autoit": 267,
-		"./autoit.js": 267,
-		"./avrasm": 268,
-		"./avrasm.js": 268,
-		"./axapta": 269,
-		"./axapta.js": 269,
-		"./bash": 270,
-		"./bash.js": 270,
-		"./basic": 271,
-		"./basic.js": 271,
-		"./brainfuck": 272,
-		"./brainfuck.js": 272,
-		"./cal": 273,
-		"./cal.js": 273,
-		"./capnproto": 274,
-		"./capnproto.js": 274,
-		"./ceylon": 275,
-		"./ceylon.js": 275,
-		"./clojure": 276,
-		"./clojure-repl": 277,
-		"./clojure-repl.js": 277,
-		"./clojure.js": 276,
-		"./cmake": 278,
-		"./cmake.js": 278,
-		"./coffeescript": 279,
-		"./coffeescript.js": 279,
-		"./cos": 280,
-		"./cos.js": 280,
-		"./cpp": 281,
-		"./cpp.js": 281,
-		"./crmsh": 282,
-		"./crmsh.js": 282,
-		"./crystal": 283,
-		"./crystal.js": 283,
-		"./cs": 284,
-		"./cs.js": 284,
-		"./css": 285,
-		"./css.js": 285,
-		"./d": 286,
-		"./d.js": 286,
-		"./dart": 287,
-		"./dart.js": 287,
-		"./delphi": 288,
-		"./delphi.js": 288,
-		"./diff": 289,
-		"./diff.js": 289,
-		"./django": 290,
-		"./django.js": 290,
-		"./dns": 291,
-		"./dns.js": 291,
-		"./dockerfile": 292,
-		"./dockerfile.js": 292,
-		"./dos": 293,
-		"./dos.js": 293,
-		"./dts": 294,
-		"./dts.js": 294,
-		"./dust": 295,
-		"./dust.js": 295,
-		"./elixir": 296,
-		"./elixir.js": 296,
-		"./elm": 297,
-		"./elm.js": 297,
-		"./erb": 298,
-		"./erb.js": 298,
-		"./erlang": 299,
-		"./erlang-repl": 300,
-		"./erlang-repl.js": 300,
-		"./erlang.js": 299,
-		"./fix": 301,
-		"./fix.js": 301,
-		"./fortran": 302,
-		"./fortran.js": 302,
-		"./fsharp": 303,
-		"./fsharp.js": 303,
-		"./gams": 304,
-		"./gams.js": 304,
-		"./gauss": 305,
-		"./gauss.js": 305,
-		"./gcode": 306,
-		"./gcode.js": 306,
-		"./gherkin": 307,
-		"./gherkin.js": 307,
-		"./glsl": 308,
-		"./glsl.js": 308,
-		"./go": 309,
-		"./go.js": 309,
-		"./golo": 310,
-		"./golo.js": 310,
-		"./gradle": 311,
-		"./gradle.js": 311,
-		"./groovy": 312,
-		"./groovy.js": 312,
-		"./haml": 313,
-		"./haml.js": 313,
-		"./handlebars": 314,
-		"./handlebars.js": 314,
-		"./haskell": 315,
-		"./haskell.js": 315,
-		"./haxe": 316,
-		"./haxe.js": 316,
-		"./hsp": 317,
-		"./hsp.js": 317,
-		"./http": 318,
-		"./http.js": 318,
-		"./inform7": 319,
-		"./inform7.js": 319,
-		"./ini": 320,
-		"./ini.js": 320,
-		"./irpf90": 321,
-		"./irpf90.js": 321,
-		"./java": 322,
-		"./java.js": 322,
-		"./javascript": 323,
-		"./javascript.js": 323,
-		"./json": 324,
-		"./json.js": 324,
-		"./julia": 325,
-		"./julia.js": 325,
-		"./kotlin": 326,
-		"./kotlin.js": 326,
-		"./lasso": 327,
-		"./lasso.js": 327,
-		"./less": 328,
-		"./less.js": 328,
-		"./lisp": 329,
-		"./lisp.js": 329,
-		"./livecodeserver": 330,
-		"./livecodeserver.js": 330,
-		"./livescript": 331,
-		"./livescript.js": 331,
-		"./lua": 332,
-		"./lua.js": 332,
-		"./makefile": 333,
-		"./makefile.js": 333,
-		"./markdown": 334,
-		"./markdown.js": 334,
-		"./mathematica": 335,
-		"./mathematica.js": 335,
-		"./matlab": 336,
-		"./matlab.js": 336,
-		"./mel": 337,
-		"./mel.js": 337,
-		"./mercury": 338,
-		"./mercury.js": 338,
-		"./mipsasm": 339,
-		"./mipsasm.js": 339,
-		"./mizar": 340,
-		"./mizar.js": 340,
-		"./mojolicious": 341,
-		"./mojolicious.js": 341,
-		"./monkey": 342,
-		"./monkey.js": 342,
-		"./nginx": 343,
-		"./nginx.js": 343,
-		"./nimrod": 344,
-		"./nimrod.js": 344,
-		"./nix": 345,
-		"./nix.js": 345,
-		"./nsis": 346,
-		"./nsis.js": 346,
-		"./objectivec": 347,
-		"./objectivec.js": 347,
-		"./ocaml": 348,
-		"./ocaml.js": 348,
-		"./openscad": 349,
-		"./openscad.js": 349,
-		"./oxygene": 350,
-		"./oxygene.js": 350,
-		"./parser3": 351,
-		"./parser3.js": 351,
-		"./perl": 352,
-		"./perl.js": 352,
-		"./pf": 353,
-		"./pf.js": 353,
-		"./php": 354,
-		"./php.js": 354,
-		"./powershell": 355,
-		"./powershell.js": 355,
-		"./processing": 356,
-		"./processing.js": 356,
-		"./profile": 357,
-		"./profile.js": 357,
-		"./prolog": 358,
-		"./prolog.js": 358,
-		"./protobuf": 359,
-		"./protobuf.js": 359,
-		"./puppet": 360,
-		"./puppet.js": 360,
-		"./python": 361,
-		"./python.js": 361,
-		"./q": 362,
-		"./q.js": 362,
-		"./r": 363,
-		"./r.js": 363,
-		"./rib": 364,
-		"./rib.js": 364,
-		"./roboconf": 365,
-		"./roboconf.js": 365,
-		"./rsl": 366,
-		"./rsl.js": 366,
-		"./ruby": 367,
-		"./ruby.js": 367,
-		"./ruleslanguage": 368,
-		"./ruleslanguage.js": 368,
-		"./rust": 369,
-		"./rust.js": 369,
-		"./scala": 370,
-		"./scala.js": 370,
-		"./scheme": 371,
-		"./scheme.js": 371,
-		"./scilab": 372,
-		"./scilab.js": 372,
-		"./scss": 373,
-		"./scss.js": 373,
-		"./smali": 374,
-		"./smali.js": 374,
-		"./smalltalk": 375,
-		"./smalltalk.js": 375,
-		"./sml": 376,
-		"./sml.js": 376,
-		"./sqf": 377,
-		"./sqf.js": 377,
-		"./sql": 378,
-		"./sql.js": 378,
-		"./stan": 379,
-		"./stan.js": 379,
-		"./stata": 380,
-		"./stata.js": 380,
-		"./step21": 381,
-		"./step21.js": 381,
-		"./stylus": 382,
-		"./stylus.js": 382,
-		"./swift": 383,
-		"./swift.js": 383,
-		"./tcl": 384,
-		"./tcl.js": 384,
-		"./tex": 385,
-		"./tex.js": 385,
-		"./thrift": 386,
-		"./thrift.js": 386,
-		"./tp": 387,
-		"./tp.js": 387,
-		"./twig": 388,
-		"./twig.js": 388,
-		"./typescript": 389,
-		"./typescript.js": 389,
-		"./vala": 390,
-		"./vala.js": 390,
-		"./vbnet": 391,
-		"./vbnet.js": 391,
-		"./vbscript": 392,
-		"./vbscript-html": 393,
-		"./vbscript-html.js": 393,
-		"./vbscript.js": 392,
-		"./verilog": 394,
-		"./verilog.js": 394,
-		"./vhdl": 395,
-		"./vhdl.js": 395,
-		"./vim": 396,
-		"./vim.js": 396,
-		"./x86asm": 397,
-		"./x86asm.js": 397,
-		"./xl": 398,
-		"./xl.js": 398,
-		"./xml": 399,
-		"./xml.js": 399,
-		"./xquery": 400,
-		"./xquery.js": 400,
-		"./yaml": 401,
-		"./yaml.js": 401,
-		"./zephir": 402,
-		"./zephir.js": 402
-	};
-	function webpackContext(req) {
-		return __webpack_require__(webpackContextResolve(req));
-	};
-	function webpackContextResolve(req) {
-		return map[req] || (function() { throw new Error("Cannot find module '" + req + "'.") }());
-	};
-	webpackContext.keys = function webpackContextKeys() {
-		return Object.keys(map);
-	};
-	webpackContext.resolve = webpackContextResolve;
-	module.exports = webpackContext;
-	webpackContext.id = 256;
-
-
-/***/ },
-/* 257 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs){
@@ -31052,7 +23663,7 @@
 	};
 
 /***/ },
-/* 258 */
+/* 191 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31094,7 +23705,7 @@
 	};
 
 /***/ },
-/* 259 */
+/* 192 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31164,14 +23775,15 @@
 	            begin: ':\\s*' + IDENT_FUNC_RETURN_TYPE_RE
 	          }
 	        ]
-	      }
+	      },
+	      hljs.METHOD_GUARD
 	    ],
 	    illegal: /#/
 	  };
 	};
 
 /***/ },
-/* 260 */
+/* 193 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31221,7 +23833,7 @@
 	};
 
 /***/ },
-/* 261 */
+/* 194 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31311,7 +23923,7 @@
 	};
 
 /***/ },
-/* 262 */
+/* 195 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31362,7 +23974,6 @@
 	
 	  	return {
 		    keywords: {
-		      function: 'setup loop while catch for if do goto try switch case else default break continue return',
 		      keyword: 'boolean byte word string String array ' +
 		      // CPP keywords
 		      'int float private char export virtual operator sizeof uint8_t uint16_t ' +
@@ -31376,84 +23987,87 @@
 		      'atomic_bool atomic_char atomic_schar ' +
 		      'atomic_uchar atomic_short atomic_ushort atomic_int atomic_uint atomic_long atomic_ulong atomic_llong ' +
 		      'atomic_ullong',
-		      built_in: 'KeyboardController MouseController SoftwareSerial ' + 
-		            'EthernetServer EthernetClient LiquidCrystal ' + 
-		            'RobotControl GSMVoiceCall EthernetUDP EsploraTFT ' + 
-		            'HttpClient RobotMotor WiFiClient GSMScanner ' + 
-		            'FileSystem Scheduler GSMServer YunClient YunServer ' + 
-		            'IPAddress GSMClient GSMModem Keyboard Ethernet ' + 
-		            'Console GSMBand Esplora Stepper Process ' + 
-		            'WiFiUDP GSM_SMS Mailbox USBHost Firmata PImage ' + 
-		            'Client Server GSMPIN FileIO Bridge Serial ' + 
-		            'EEPROM Stream Mouse Audio Servo File Task ' + 
-		            'GPRS WiFi Wire TFT GSM SPI SD ' + 
-		            'runShellCommandAsynchronously analogWriteResolution ' + 
-		            'retrieveCallingNumber printFirmwareVersion ' + 
-		            'analogReadResolution sendDigitalPortPair ' + 
-		            'noListenOnLocalhost readJoystickButton setFirmwareVersion ' + 
-		            'readJoystickSwitch scrollDisplayRight getVoiceCallStatus ' + 
-		            'scrollDisplayLeft writeMicroseconds delayMicroseconds ' + 
-		            'beginTransmission getSignalStrength runAsynchronously ' + 
-		            'getAsynchronously listenOnLocalhost getCurrentCarrier ' + 
-		            'readAccelerometer messageAvailable sendDigitalPorts ' + 
-		            'lineFollowConfig countryNameWrite runShellCommand ' + 
-		            'readStringUntil rewindDirectory readTemperature ' + 
-		            'setClockDivider readLightSensor endTransmission ' + 
-		            'analogReference detachInterrupt countryNameRead ' + 
-		            'attachInterrupt encryptionType readBytesUntil ' + 
-		            'robotNameWrite readMicrophone robotNameRead cityNameWrite ' + 
-		            'userNameWrite readJoystickY readJoystickX mouseReleased ' + 
-		            'openNextFile scanNetworks noInterrupts digitalWrite ' + 
-		            'beginSpeaker mousePressed isActionDone mouseDragged ' + 
-		            'displayLogos noAutoscroll addParameter remoteNumber ' + 
-		            'getModifiers keyboardRead userNameRead waitContinue ' + 
-		            'processInput parseCommand printVersion readNetworks ' + 
-		            'writeMessage blinkVersion cityNameRead readMessage ' + 
-		            'setDataMode parsePacket isListening setBitOrder ' + 
-		            'beginPacket isDirectory motorsWrite drawCompass ' + 
-		            'digitalRead clearScreen serialEvent rightToLeft ' + 
-		            'setTextSize leftToRight requestFrom keyReleased ' + 
-		            'compassRead analogWrite interrupts WiFiServer ' + 
-		            'disconnect playMelody parseFloat autoscroll ' + 
-		            'getPINUsed setPINUsed setTimeout sendAnalog ' + 
-		            'readSlider analogRead beginWrite createChar ' + 
-		            'motorsStop keyPressed tempoWrite readButton ' + 
-		            'subnetMask debugPrint macAddress writeGreen ' + 
-		            'randomSeed attachGPRS readString sendString ' + 
-		            'remotePort releaseAll mouseMoved background ' + 
-		            'getXChange getYChange answerCall getResult ' +  
-		            'voiceCall endPacket constrain getSocket writeJSON ' + 
-		            'getButton available connected findUntil readBytes ' + 
-		            'exitValue readGreen writeBlue startLoop IPAddress ' + 
-		            'isPressed sendSysex pauseMode gatewayIP setCursor ' + 
-		            'getOemKey tuneWrite noDisplay loadImage switchPIN ' + 
-		            'onRequest onReceive changePIN playFile noBuffer ' + 
-		            'parseInt overflow checkPIN knobRead beginTFT ' + 
-		            'bitClear updateIR bitWrite position writeRGB ' + 
-		            'highByte writeRed setSpeed readBlue noStroke ' + 
-		            'remoteIP transfer shutdown hangCall beginSMS ' + 
-		            'endWrite attached maintain noCursor checkReg ' + 
-		            'checkPUK shiftOut isValid shiftIn pulseIn ' + 
-		            'connect println localIP pinMode getIMEI ' + 
-		            'display noBlink process getBand running beginSD ' + 
-		            'drawBMP lowByte setBand release bitRead prepare ' + 
-		            'pointTo readRed setMode noFill remove listen ' + 
-		            'stroke detach attach noTone exists buffer ' + 
-		            'height bitSet circle config cursor random ' + 
-		            'IRread setDNS endSMS getKey micros ' + 
-		            'millis begin print write ready flush width ' + 
-		            'isPIN blink clear press mkdir rmdir close ' + 
-		            'point yield image BSSID click delay ' + 
-		            'read text move peek beep rect line open ' + 
-		            'seek fill size turn stop home find ' + 
-		            'step tone sqrt RSSI SSID ' + 
-		            'end bit tan cos sin pow map abs max ' + 
+		      built_in:
+	              'setup loop while catch for if do goto try switch case else ' +
+	              'default break continue return ' +
+	              'KeyboardController MouseController SoftwareSerial ' +
+		            'EthernetServer EthernetClient LiquidCrystal ' +
+		            'RobotControl GSMVoiceCall EthernetUDP EsploraTFT ' +
+		            'HttpClient RobotMotor WiFiClient GSMScanner ' +
+		            'FileSystem Scheduler GSMServer YunClient YunServer ' +
+		            'IPAddress GSMClient GSMModem Keyboard Ethernet ' +
+		            'Console GSMBand Esplora Stepper Process ' +
+		            'WiFiUDP GSM_SMS Mailbox USBHost Firmata PImage ' +
+		            'Client Server GSMPIN FileIO Bridge Serial ' +
+		            'EEPROM Stream Mouse Audio Servo File Task ' +
+		            'GPRS WiFi Wire TFT GSM SPI SD ' +
+		            'runShellCommandAsynchronously analogWriteResolution ' +
+		            'retrieveCallingNumber printFirmwareVersion ' +
+		            'analogReadResolution sendDigitalPortPair ' +
+		            'noListenOnLocalhost readJoystickButton setFirmwareVersion ' +
+		            'readJoystickSwitch scrollDisplayRight getVoiceCallStatus ' +
+		            'scrollDisplayLeft writeMicroseconds delayMicroseconds ' +
+		            'beginTransmission getSignalStrength runAsynchronously ' +
+		            'getAsynchronously listenOnLocalhost getCurrentCarrier ' +
+		            'readAccelerometer messageAvailable sendDigitalPorts ' +
+		            'lineFollowConfig countryNameWrite runShellCommand ' +
+		            'readStringUntil rewindDirectory readTemperature ' +
+		            'setClockDivider readLightSensor endTransmission ' +
+		            'analogReference detachInterrupt countryNameRead ' +
+		            'attachInterrupt encryptionType readBytesUntil ' +
+		            'robotNameWrite readMicrophone robotNameRead cityNameWrite ' +
+		            'userNameWrite readJoystickY readJoystickX mouseReleased ' +
+		            'openNextFile scanNetworks noInterrupts digitalWrite ' +
+		            'beginSpeaker mousePressed isActionDone mouseDragged ' +
+		            'displayLogos noAutoscroll addParameter remoteNumber ' +
+		            'getModifiers keyboardRead userNameRead waitContinue ' +
+		            'processInput parseCommand printVersion readNetworks ' +
+		            'writeMessage blinkVersion cityNameRead readMessage ' +
+		            'setDataMode parsePacket isListening setBitOrder ' +
+		            'beginPacket isDirectory motorsWrite drawCompass ' +
+		            'digitalRead clearScreen serialEvent rightToLeft ' +
+		            'setTextSize leftToRight requestFrom keyReleased ' +
+		            'compassRead analogWrite interrupts WiFiServer ' +
+		            'disconnect playMelody parseFloat autoscroll ' +
+		            'getPINUsed setPINUsed setTimeout sendAnalog ' +
+		            'readSlider analogRead beginWrite createChar ' +
+		            'motorsStop keyPressed tempoWrite readButton ' +
+		            'subnetMask debugPrint macAddress writeGreen ' +
+		            'randomSeed attachGPRS readString sendString ' +
+		            'remotePort releaseAll mouseMoved background ' +
+		            'getXChange getYChange answerCall getResult ' +
+		            'voiceCall endPacket constrain getSocket writeJSON ' +
+		            'getButton available connected findUntil readBytes ' +
+		            'exitValue readGreen writeBlue startLoop IPAddress ' +
+		            'isPressed sendSysex pauseMode gatewayIP setCursor ' +
+		            'getOemKey tuneWrite noDisplay loadImage switchPIN ' +
+		            'onRequest onReceive changePIN playFile noBuffer ' +
+		            'parseInt overflow checkPIN knobRead beginTFT ' +
+		            'bitClear updateIR bitWrite position writeRGB ' +
+		            'highByte writeRed setSpeed readBlue noStroke ' +
+		            'remoteIP transfer shutdown hangCall beginSMS ' +
+		            'endWrite attached maintain noCursor checkReg ' +
+		            'checkPUK shiftOut isValid shiftIn pulseIn ' +
+		            'connect println localIP pinMode getIMEI ' +
+		            'display noBlink process getBand running beginSD ' +
+		            'drawBMP lowByte setBand release bitRead prepare ' +
+		            'pointTo readRed setMode noFill remove listen ' +
+		            'stroke detach attach noTone exists buffer ' +
+		            'height bitSet circle config cursor random ' +
+		            'IRread setDNS endSMS getKey micros ' +
+		            'millis begin print write ready flush width ' +
+		            'isPIN blink clear press mkdir rmdir close ' +
+		            'point yield image BSSID click delay ' +
+		            'read text move peek beep rect line open ' +
+		            'seek fill size turn stop home find ' +
+		            'step tone sqrt RSSI SSID ' +
+		            'end bit tan cos sin pow map abs max ' +
 		            'min get run put',
-		        symbol: 'DIGITAL_MESSAGE FIRMATA_STRING ANALOG_MESSAGE ' + 
-		            'REPORT_DIGITAL REPORT_ANALOG INPUT_PULLUP ' + 
-		            'SET_PIN_MODE INTERNAL2V56 SYSTEM_RESET LED_BUILTIN ' + 
-		            'INTERNAL1V1 SYSEX_START INTERNAL EXTERNAL ' + 
-		            'DEFAULT OUTPUT INPUT HIGH LOW' 
+		        literal: 'DIGITAL_MESSAGE FIRMATA_STRING ANALOG_MESSAGE ' +
+		            'REPORT_DIGITAL REPORT_ANALOG INPUT_PULLUP ' +
+		            'SET_PIN_MODE INTERNAL2V56 SYSTEM_RESET LED_BUILTIN ' +
+		            'INTERNAL1V1 SYSEX_START INTERNAL EXTERNAL ' +
+		            'DEFAULT OUTPUT INPUT HIGH LOW'
 		    },
 		    contains: [
 		      PREPROCESSOR,
@@ -31467,7 +24081,7 @@
 	};
 
 /***/ },
-/* 263 */
+/* 196 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31563,7 +24177,114 @@
 	};
 
 /***/ },
-/* 264 */
+/* 197 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var XML_IDENT_RE = '[A-Za-z0-9\\._:-]+';
+	  var TAG_INTERNALS = {
+	    endsWithParent: true,
+	    illegal: /</,
+	    relevance: 0,
+	    contains: [
+	      {
+	        className: 'attr',
+	        begin: XML_IDENT_RE,
+	        relevance: 0
+	      },
+	      {
+	        begin: /=\s*/,
+	        relevance: 0,
+	        contains: [
+	          {
+	            className: 'string',
+	            endsParent: true,
+	            variants: [
+	              {begin: /"/, end: /"/},
+	              {begin: /'/, end: /'/},
+	              {begin: /[^\s"'=<>`]+/}
+	            ]
+	          }
+	        ]
+	      }
+	    ]
+	  };
+	  return {
+	    aliases: ['html', 'xhtml', 'rss', 'atom', 'xsl', 'plist'],
+	    case_insensitive: true,
+	    contains: [
+	      {
+	        className: 'meta',
+	        begin: '<!DOCTYPE', end: '>',
+	        relevance: 10,
+	        contains: [{begin: '\\[', end: '\\]'}]
+	      },
+	      hljs.COMMENT(
+	        '<!--',
+	        '-->',
+	        {
+	          relevance: 10
+	        }
+	      ),
+	      {
+	        begin: '<\\!\\[CDATA\\[', end: '\\]\\]>',
+	        relevance: 10
+	      },
+	      {
+	        begin: /<\?(php)?/, end: /\?>/,
+	        subLanguage: 'php',
+	        contains: [{begin: '/\\*', end: '\\*/', skip: true}]
+	      },
+	      {
+	        className: 'tag',
+	        /*
+	        The lookahead pattern (?=...) ensures that 'begin' only matches
+	        '<style' as a single word, followed by a whitespace or an
+	        ending braket. The '$' is needed for the lexeme to be recognized
+	        by hljs.subMode() that tests lexemes outside the stream.
+	        */
+	        begin: '<style(?=\\s|>|$)', end: '>',
+	        keywords: {name: 'style'},
+	        contains: [TAG_INTERNALS],
+	        starts: {
+	          end: '</style>', returnEnd: true,
+	          subLanguage: ['css', 'xml']
+	        }
+	      },
+	      {
+	        className: 'tag',
+	        // See the comment in the <style tag about the lookahead pattern
+	        begin: '<script(?=\\s|>|$)', end: '>',
+	        keywords: {name: 'script'},
+	        contains: [TAG_INTERNALS],
+	        starts: {
+	          end: '\<\/script\>', returnEnd: true,
+	          subLanguage: ['actionscript', 'javascript', 'handlebars', 'xml']
+	        }
+	      },
+	      {
+	        className: 'meta',
+	        variants: [
+	          {begin: /<\?xml/, end: /\?>/, relevance: 10},
+	          {begin: /<\?\w+/, end: /\?>/}
+	        ]
+	      },
+	      {
+	        className: 'tag',
+	        begin: '</?', end: '/?>',
+	        contains: [
+	          {
+	            className: 'name', begin: /[^\/><\s]+/, relevance: 0
+	          },
+	          TAG_INTERNALS
+	        ]
+	      }
+	    ]
+	  };
+	};
+
+/***/ },
+/* 198 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31755,7 +24476,7 @@
 	};
 
 /***/ },
-/* 265 */
+/* 199 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
@@ -31903,7 +24624,7 @@
 	};
 
 /***/ },
-/* 266 */
+/* 200 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31955,7 +24676,7 @@
 	};
 
 /***/ },
-/* 267 */
+/* 201 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33713,7 +26434,7 @@
 	};
 
 /***/ },
-/* 268 */
+/* 202 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33779,7 +26500,7 @@
 	};
 
 /***/ },
-/* 269 */
+/* 203 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33814,7 +26535,7 @@
 	};
 
 /***/ },
-/* 270 */
+/* 204 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33893,7 +26614,7 @@
 	};
 
 /***/ },
-/* 271 */
+/* 205 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33948,7 +26669,7 @@
 	};
 
 /***/ },
-/* 272 */
+/* 206 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs){
@@ -33989,7 +26710,7 @@
 	};
 
 /***/ },
-/* 273 */
+/* 207 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34073,7 +26794,7 @@
 	};
 
 /***/ },
-/* 274 */
+/* 208 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34126,7 +26847,7 @@
 	};
 
 /***/ },
-/* 275 */
+/* 209 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34197,7 +26918,7 @@
 	};
 
 /***/ },
-/* 276 */
+/* 210 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34296,7 +27017,7 @@
 	};
 
 /***/ },
-/* 277 */
+/* 211 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34315,7 +27036,7 @@
 	};
 
 /***/ },
-/* 278 */
+/* 212 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34357,7 +27078,7 @@
 	};
 
 /***/ },
-/* 279 */
+/* 213 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34500,7 +27221,7 @@
 	};
 
 /***/ },
-/* 280 */
+/* 214 */
 /***/ function(module, exports) {
 
 	module.exports = function cos (hljs) {
@@ -34636,7 +27357,7 @@
 	};
 
 /***/ },
-/* 281 */
+/* 215 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34721,16 +27442,19 @@
 	    literal: 'true false nullptr NULL'
 	  };
 	
+	  var EXPRESSION_CONTAINS = [
+	    CPP_PRIMATIVE_TYPES,
+	    hljs.C_LINE_COMMENT_MODE,
+	    hljs.C_BLOCK_COMMENT_MODE,
+	    NUMBERS,
+	    STRINGS
+	  ];
+	
 	  return {
 	    aliases: ['c', 'cc', 'h', 'c++', 'h++', 'hpp'],
 	    keywords: CPP_KEYWORDS,
 	    illegal: '</',
-	    contains: [
-	      CPP_PRIMATIVE_TYPES,
-	      hljs.C_LINE_COMMENT_MODE,
-	      hljs.C_BLOCK_COMMENT_MODE,
-	      NUMBERS,
-	      STRINGS,
+	    contains: EXPRESSION_CONTAINS.concat([
 	      PREPROCESSOR,
 	      {
 	        begin: '\\b(deque|list|queue|stack|vector|map|set|bitset|multiset|multimap|unordered_map|unordered_set|unordered_multiset|unordered_multimap|array)\\s*<', end: '>',
@@ -34742,9 +27466,22 @@
 	        keywords: CPP_KEYWORDS
 	      },
 	      {
-	        // Expression keywords prevent 'keyword Name(...) or else if(...)' from
-	        // being recognized as a function definition
-	        beginKeywords: 'new throw return else',
+	        // This mode covers expression context where we can't expect a function
+	        // definition and shouldn't highlight anything that looks like one:
+	        // `return some()`, `else if()`, `(x*sum(1, 2))`
+	        variants: [
+	          {begin: /=/, end: /;/},
+	          {begin: /\(/, end: /\)/},
+	          {beginKeywords: 'new throw return else', end: /;/}
+	        ],
+	        keywords: CPP_KEYWORDS,
+	        contains: EXPRESSION_CONTAINS.concat([
+	          {
+	            begin: /\(/, end: /\)/,
+	            contains: EXPRESSION_CONTAINS.concat(['self']),
+	            relevance: 0
+	          }
+	        ]),
 	        relevance: 0
 	      },
 	      {
@@ -34777,12 +27514,12 @@
 	          PREPROCESSOR
 	        ]
 	      }
-	    ]
+	    ])
 	  };
 	};
 
 /***/ },
-/* 282 */
+/* 216 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34880,7 +27617,7 @@
 	};
 
 /***/ },
-/* 283 */
+/* 217 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34943,6 +27680,7 @@
 	        className: 'regexp',
 	        contains: [hljs.BACKSLASH_ESCAPE, SUBST],
 	        variants: [
+	          {begin: '//[a-z]*', relevance: 0},
 	          {begin: '/', end: '/[a-z]*'},
 	          {begin: '%r\\(', end: '\\)', contains: recursiveParen('\\(', '\\)')},
 	          {begin: '%r\\[', end: '\\]', contains: recursiveParen('\\[', '\\]')},
@@ -34975,7 +27713,9 @@
 	  var ATTRIBUTE = {
 	    className: 'meta',
 	    begin: '@\\[', end: '\\]',
-	    relevance: 5
+	    contains: [
+	      hljs.inherit(hljs.QUOTE_STRING_MODE, {className: 'meta-string'})
+	    ]
 	  };
 	  var CRYSTAL_DEFAULT_CONTAINS = [
 	    EXPANSION,
@@ -35048,7 +27788,6 @@
 	    }
 	  ];
 	  SUBST.contains = CRYSTAL_DEFAULT_CONTAINS;
-	  ATTRIBUTE.contains = CRYSTAL_DEFAULT_CONTAINS;
 	  EXPANSION.contains = CRYSTAL_DEFAULT_CONTAINS.slice(1); // without EXPANSION
 	
 	  return {
@@ -35060,23 +27799,27 @@
 	};
 
 /***/ },
-/* 284 */
+/* 218 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
-	  var KEYWORDS =
-	    // Normal keywords.
-	    'abstract as base bool break byte case catch char checked const continue decimal dynamic ' +
-	    'default delegate do double else enum event explicit extern false finally fixed float ' +
-	    'for foreach goto if implicit in int interface internal is lock long null when ' +
-	    'object operator out override params private protected public readonly ref sbyte ' +
-	    'sealed short sizeof stackalloc static string struct switch this true try typeof ' +
-	    'uint ulong unchecked unsafe ushort using virtual volatile void while async ' +
-	    'protected public private internal ' +
-	    // Contextual keywords.
-	    'ascending descending from get group into join let orderby partial select set value var ' +
-	    'where yield';
-	  var GENERIC_IDENT_RE = hljs.IDENT_RE + '(<' + hljs.IDENT_RE + '>)?';
+	  var KEYWORDS = {
+	    keyword:
+	      // Normal keywords.
+	      'abstract as base bool break byte case catch char checked const continue decimal dynamic ' +
+	      'default delegate do double else enum event explicit extern finally fixed float ' +
+	      'for foreach goto if implicit in int interface internal is lock long when ' +
+	      'object operator out override params private protected public readonly ref sbyte ' +
+	      'sealed short sizeof stackalloc static string struct switch this try typeof ' +
+	      'uint ulong unchecked unsafe ushort using virtual volatile void while async ' +
+	      'protected public private internal ' +
+	      // Contextual keywords.
+	      'ascending descending from get group into join let orderby partial select set value var ' +
+	      'where yield',
+	    literal:
+	      'null false true'
+	  };
+	  var TYPE_IDENT_RE = hljs.IDENT_RE + '(<' + hljs.IDENT_RE + '>)?(\\[\\])?';
 	  return {
 	    aliases: ['csharp'],
 	    keywords: KEYWORDS,
@@ -35146,7 +27889,7 @@
 	      },
 	      {
 	        className: 'function',
-	        begin: '(' + GENERIC_IDENT_RE + '\\s+)+' + hljs.IDENT_RE + '\\s*\\(', returnBegin: true, end: /[{;=]/,
+	        begin: '(' + TYPE_IDENT_RE + '\\s+)+' + hljs.IDENT_RE + '\\s*\\(', returnBegin: true, end: /[{;=]/,
 	        excludeEnd: true,
 	        keywords: KEYWORDS,
 	        contains: [
@@ -35178,7 +27921,7 @@
 	};
 
 /***/ },
-/* 285 */
+/* 219 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -35193,11 +27936,18 @@
 	          endsWithParent: true, excludeEnd: true,
 	          contains: [
 	            {
-	              begin: /[\w-]+\s*\(/, returnBegin: true,
+	              begin: /[\w-]+\(/, returnBegin: true,
 	              contains: [
 	                {
 	                  className: 'built_in',
 	                  begin: /[\w-]+/
+	                },
+	                {
+	                  begin: /\(/, end: /\)/,
+	                  contains: [
+	                    hljs.APOS_STRING_MODE,
+	                    hljs.QUOTE_STRING_MODE
+	                  ]
 	                }
 	              ]
 	            },
@@ -35247,10 +27997,11 @@
 	                                 // because it doesn’t let it to be parsed as
 	                                 // a rule set but instead drops parser into
 	                                 // the default mode which is how it should be.
+	        illegal: /:/, // break on Less variables @var: ...
 	        contains: [
 	          {
 	            className: 'keyword',
-	            begin: /\S+/
+	            begin: /\w+/
 	          },
 	          {
 	            begin: /\s/, endsWithParent: true, excludeEnd: true,
@@ -35279,7 +28030,7 @@
 	};
 
 /***/ },
-/* 286 */
+/* 220 */
 /***/ function(module, exports) {
 
 	module.exports = /**
@@ -35541,7 +28292,118 @@
 	};
 
 /***/ },
-/* 287 */
+/* 221 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  return {
+	    aliases: ['md', 'mkdown', 'mkd'],
+	    contains: [
+	      // highlight headers
+	      {
+	        className: 'section',
+	        variants: [
+	          { begin: '^#{1,6}', end: '$' },
+	          { begin: '^.+?\\n[=-]{2,}$' }
+	        ]
+	      },
+	      // inline html
+	      {
+	        begin: '<', end: '>',
+	        subLanguage: 'xml',
+	        relevance: 0
+	      },
+	      // lists (indicators only)
+	      {
+	        className: 'bullet',
+	        begin: '^([*+-]|(\\d+\\.))\\s+'
+	      },
+	      // strong segments
+	      {
+	        className: 'strong',
+	        begin: '[*_]{2}.+?[*_]{2}'
+	      },
+	      // emphasis segments
+	      {
+	        className: 'emphasis',
+	        variants: [
+	          { begin: '\\*.+?\\*' },
+	          { begin: '_.+?_'
+	          , relevance: 0
+	          }
+	        ]
+	      },
+	      // blockquotes
+	      {
+	        className: 'quote',
+	        begin: '^>\\s+', end: '$'
+	      },
+	      // code snippets
+	      {
+	        className: 'code',
+	        variants: [
+	          {
+	            begin: '^```\w*\s*$', end: '^```\s*$'
+	          },
+	          {
+	            begin: '`.+?`'
+	          },
+	          {
+	            begin: '^( {4}|\t)', end: '$',
+	            relevance: 0
+	          }
+	        ]
+	      },
+	      // horizontal rules
+	      {
+	        begin: '^[-\\*]{3,}', end: '$'
+	      },
+	      // using links - title and link
+	      {
+	        begin: '\\[.+?\\][\\(\\[].*?[\\)\\]]',
+	        returnBegin: true,
+	        contains: [
+	          {
+	            className: 'string',
+	            begin: '\\[', end: '\\]',
+	            excludeBegin: true,
+	            returnEnd: true,
+	            relevance: 0
+	          },
+	          {
+	            className: 'link',
+	            begin: '\\]\\(', end: '\\)',
+	            excludeBegin: true, excludeEnd: true
+	          },
+	          {
+	            className: 'symbol',
+	            begin: '\\]\\[', end: '\\]',
+	            excludeBegin: true, excludeEnd: true
+	          }
+	        ],
+	        relevance: 10
+	      },
+	      {
+	        begin: '^\\[\.+\\]:',
+	        returnBegin: true,
+	        contains: [
+	          {
+	            className: 'symbol',
+	            begin: '\\[', end: '\\]:',
+	            excludeBegin: true, excludeEnd: true,
+	            starts: {
+	              className: 'link',
+	              end: '$'
+	            }
+	          }
+	        ]
+	      }
+	    ]
+	  };
+	};
+
+/***/ },
+/* 222 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
@@ -35593,8 +28455,8 @@
 	  ];
 	
 	  var KEYWORDS = {
-	    keyword: 'assert break case catch class const continue default do else enum extends false final finally for if ' +
-	      'in is new null rethrow return super switch this throw true try var void while with ' +
+	    keyword: 'assert async await break case catch class const continue default do else enum extends false final ' +
+	      'finally for if in is new null rethrow return super switch sync this throw true try var void while with yield ' +
 	      'abstract as dynamic export external factory get implements import library operator part set static typedef',
 	    built_in:
 	      // dart:core
@@ -35646,7 +28508,7 @@
 	};
 
 /***/ },
-/* 288 */
+/* 223 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -35704,6 +28566,7 @@
 	    ].concat(COMMENT_MODES)
 	  };
 	  return {
+	    aliases: ['dpr', 'dfm', 'pas', 'pascal', 'freepascal', 'lazarus', 'lpr', 'lfm'],
 	    case_insensitive: true,
 	    keywords: KEYWORDS,
 	    illegal: /"|\$[G-Zg-z]|\/\*|<\/|\|/,
@@ -35717,7 +28580,7 @@
 	};
 
 /***/ },
-/* 289 */
+/* 224 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -35761,7 +28624,7 @@
 	};
 
 /***/ },
-/* 290 */
+/* 225 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -35829,7 +28692,7 @@
 	};
 
 /***/ },
-/* 291 */
+/* 226 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -35862,7 +28725,7 @@
 	};
 
 /***/ },
-/* 292 */
+/* 227 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -35895,12 +28758,12 @@
 	};
 
 /***/ },
-/* 293 */
+/* 228 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  var COMMENT = hljs.COMMENT(
-	    /@?rem\b/, /$/,
+	    /^\s*@?rem\b/, /$/,
 	    {
 	      relevance: 10
 	    }
@@ -35951,7 +28814,7 @@
 	};
 
 /***/ },
-/* 294 */
+/* 229 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36079,7 +28942,7 @@
 	};
 
 /***/ },
-/* 295 */
+/* 230 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36115,7 +28978,7 @@
 	};
 
 /***/ },
-/* 296 */
+/* 231 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36164,7 +29027,7 @@
 	    FUNCTION,
 	    {
 	      className: 'symbol',
-	      begin: ':',
+	      begin: ':(?!\\s)',
 	      contains: [STRING, {begin: ELIXIR_METHOD_RE}],
 	      relevance: 0
 	    },
@@ -36216,7 +29079,7 @@
 	};
 
 /***/ },
-/* 297 */
+/* 232 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36303,7 +29166,184 @@
 	};
 
 /***/ },
-/* 298 */
+/* 233 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var RUBY_METHOD_RE = '[a-zA-Z_]\\w*[!?=]?|[-+~]\\@|<<|>>|=~|===?|<=>|[<>]=?|\\*\\*|[-/+%^&*~`|]|\\[\\]=?';
+	  var RUBY_KEYWORDS = {
+	    keyword:
+	      'and then defined module in return redo if BEGIN retry end for self when ' +
+	      'next until do begin unless END rescue else break undef not super class case ' +
+	      'require yield alias while ensure elsif or include attr_reader attr_writer attr_accessor',
+	    literal:
+	      'true false nil'
+	  };
+	  var YARDOCTAG = {
+	    className: 'doctag',
+	    begin: '@[A-Za-z]+'
+	  };
+	  var IRB_OBJECT = {
+	    begin: '#<', end: '>'
+	  };
+	  var COMMENT_MODES = [
+	    hljs.COMMENT(
+	      '#',
+	      '$',
+	      {
+	        contains: [YARDOCTAG]
+	      }
+	    ),
+	    hljs.COMMENT(
+	      '^\\=begin',
+	      '^\\=end',
+	      {
+	        contains: [YARDOCTAG],
+	        relevance: 10
+	      }
+	    ),
+	    hljs.COMMENT('^__END__', '\\n$')
+	  ];
+	  var SUBST = {
+	    className: 'subst',
+	    begin: '#\\{', end: '}',
+	    keywords: RUBY_KEYWORDS
+	  };
+	  var STRING = {
+	    className: 'string',
+	    contains: [hljs.BACKSLASH_ESCAPE, SUBST],
+	    variants: [
+	      {begin: /'/, end: /'/},
+	      {begin: /"/, end: /"/},
+	      {begin: /`/, end: /`/},
+	      {begin: '%[qQwWx]?\\(', end: '\\)'},
+	      {begin: '%[qQwWx]?\\[', end: '\\]'},
+	      {begin: '%[qQwWx]?{', end: '}'},
+	      {begin: '%[qQwWx]?<', end: '>'},
+	      {begin: '%[qQwWx]?/', end: '/'},
+	      {begin: '%[qQwWx]?%', end: '%'},
+	      {begin: '%[qQwWx]?-', end: '-'},
+	      {begin: '%[qQwWx]?\\|', end: '\\|'},
+	      {
+	        // \B in the beginning suppresses recognition of ?-sequences where ?
+	        // is the last character of a preceding identifier, as in: `func?4`
+	        begin: /\B\?(\\\d{1,3}|\\x[A-Fa-f0-9]{1,2}|\\u[A-Fa-f0-9]{4}|\\?\S)\b/
+	      }
+	    ]
+	  };
+	  var PARAMS = {
+	    className: 'params',
+	    begin: '\\(', end: '\\)', endsParent: true,
+	    keywords: RUBY_KEYWORDS
+	  };
+	
+	  var RUBY_DEFAULT_CONTAINS = [
+	    STRING,
+	    IRB_OBJECT,
+	    {
+	      className: 'class',
+	      beginKeywords: 'class module', end: '$|;',
+	      illegal: /=/,
+	      contains: [
+	        hljs.inherit(hljs.TITLE_MODE, {begin: '[A-Za-z_]\\w*(::\\w+)*(\\?|\\!)?'}),
+	        {
+	          begin: '<\\s*',
+	          contains: [{
+	            begin: '(' + hljs.IDENT_RE + '::)?' + hljs.IDENT_RE
+	          }]
+	        }
+	      ].concat(COMMENT_MODES)
+	    },
+	    {
+	      className: 'function',
+	      beginKeywords: 'def', end: '$|;',
+	      contains: [
+	        hljs.inherit(hljs.TITLE_MODE, {begin: RUBY_METHOD_RE}),
+	        PARAMS
+	      ].concat(COMMENT_MODES)
+	    },
+	    {
+	      // swallow namespace qualifiers before symbols
+	      begin: hljs.IDENT_RE + '::'
+	    },
+	    {
+	      className: 'symbol',
+	      begin: hljs.UNDERSCORE_IDENT_RE + '(\\!|\\?)?:',
+	      relevance: 0
+	    },
+	    {
+	      className: 'symbol',
+	      begin: ':(?!\\s)',
+	      contains: [STRING, {begin: RUBY_METHOD_RE}],
+	      relevance: 0
+	    },
+	    {
+	      className: 'number',
+	      begin: '(\\b0[0-7_]+)|(\\b0x[0-9a-fA-F_]+)|(\\b[1-9][0-9_]*(\\.[0-9_]+)?)|[0_]\\b',
+	      relevance: 0
+	    },
+	    {
+	      begin: '(\\$\\W)|((\\$|\\@\\@?)(\\w+))' // variables
+	    },
+	    {
+	      className: 'params',
+	      begin: /\|/, end: /\|/,
+	      keywords: RUBY_KEYWORDS
+	    },
+	    { // regexp container
+	      begin: '(' + hljs.RE_STARTERS_RE + ')\\s*',
+	      contains: [
+	        IRB_OBJECT,
+	        {
+	          className: 'regexp',
+	          contains: [hljs.BACKSLASH_ESCAPE, SUBST],
+	          illegal: /\n/,
+	          variants: [
+	            {begin: '/', end: '/[a-z]*'},
+	            {begin: '%r{', end: '}[a-z]*'},
+	            {begin: '%r\\(', end: '\\)[a-z]*'},
+	            {begin: '%r!', end: '![a-z]*'},
+	            {begin: '%r\\[', end: '\\][a-z]*'}
+	          ]
+	        }
+	      ].concat(COMMENT_MODES),
+	      relevance: 0
+	    }
+	  ].concat(COMMENT_MODES);
+	
+	  SUBST.contains = RUBY_DEFAULT_CONTAINS;
+	  PARAMS.contains = RUBY_DEFAULT_CONTAINS;
+	
+	  var SIMPLE_PROMPT = "[>?]>";
+	  var DEFAULT_PROMPT = "[\\w#]+\\(\\w+\\):\\d+:\\d+>";
+	  var RVM_PROMPT = "(\\w+-)?\\d+\\.\\d+\\.\\d(p\\d+)?[^>]+>";
+	
+	  var IRB_DEFAULT = [
+	    {
+	      begin: /^\s*=>/,
+	      starts: {
+	        end: '$', contains: RUBY_DEFAULT_CONTAINS
+	      }
+	    },
+	    {
+	      className: 'meta',
+	      begin: '^('+SIMPLE_PROMPT+"|"+DEFAULT_PROMPT+'|'+RVM_PROMPT+')',
+	      starts: {
+	        end: '$', contains: RUBY_DEFAULT_CONTAINS
+	      }
+	    }
+	  ];
+	
+	  return {
+	    aliases: ['rb', 'gemspec', 'podspec', 'thor', 'irb'],
+	    keywords: RUBY_KEYWORDS,
+	    illegal: /\/\*/,
+	    contains: COMMENT_MODES.concat(IRB_DEFAULT).concat(RUBY_DEFAULT_CONTAINS)
+	  };
+	};
+
+/***/ },
+/* 234 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36322,7 +29362,57 @@
 	};
 
 /***/ },
-/* 299 */
+/* 235 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  return {
+	    keywords: {
+	      built_in:
+	        'spawn spawn_link self',
+	      keyword:
+	        'after and andalso|10 band begin bnot bor bsl bsr bxor case catch cond div end fun if ' +
+	        'let not of or orelse|10 query receive rem try when xor'
+	    },
+	    contains: [
+	      {
+	        className: 'meta', begin: '^[0-9]+> ',
+	        relevance: 10
+	      },
+	      hljs.COMMENT('%', '$'),
+	      {
+	        className: 'number',
+	        begin: '\\b(\\d+#[a-fA-F0-9]+|\\d+(\\.\\d+)?([eE][-+]?\\d+)?)',
+	        relevance: 0
+	      },
+	      hljs.APOS_STRING_MODE,
+	      hljs.QUOTE_STRING_MODE,
+	      {
+	        begin: '\\?(::)?([A-Z]\\w*(::)?)+'
+	      },
+	      {
+	        begin: '->'
+	      },
+	      {
+	        begin: 'ok'
+	      },
+	      {
+	        begin: '!'
+	      },
+	      {
+	        begin: '(\\b[a-z\'][a-zA-Z0-9_\']*:[a-z\'][a-zA-Z0-9_\']*)|(\\b[a-z\'][a-zA-Z0-9_\']*)',
+	        relevance: 0
+	      },
+	      {
+	        begin: '[A-Z][a-zA-Z0-9_\']*',
+	        relevance: 0
+	      }
+	    ]
+	  };
+	};
+
+/***/ },
+/* 236 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36472,57 +29562,7 @@
 	};
 
 /***/ },
-/* 300 */
-/***/ function(module, exports) {
-
-	module.exports = function(hljs) {
-	  return {
-	    keywords: {
-	      built_in:
-	        'spawn spawn_link self',
-	      keyword:
-	        'after and andalso|10 band begin bnot bor bsl bsr bxor case catch cond div end fun if ' +
-	        'let not of or orelse|10 query receive rem try when xor'
-	    },
-	    contains: [
-	      {
-	        className: 'meta', begin: '^[0-9]+> ',
-	        relevance: 10
-	      },
-	      hljs.COMMENT('%', '$'),
-	      {
-	        className: 'number',
-	        begin: '\\b(\\d+#[a-fA-F0-9]+|\\d+(\\.\\d+)?([eE][-+]?\\d+)?)',
-	        relevance: 0
-	      },
-	      hljs.APOS_STRING_MODE,
-	      hljs.QUOTE_STRING_MODE,
-	      {
-	        begin: '\\?(::)?([A-Z]\\w*(::)?)+'
-	      },
-	      {
-	        begin: '->'
-	      },
-	      {
-	        begin: 'ok'
-	      },
-	      {
-	        begin: '!'
-	      },
-	      {
-	        begin: '(\\b[a-z\'][a-zA-Z0-9_\']*:[a-z\'][a-zA-Z0-9_\']*)|(\\b[a-z\'][a-zA-Z0-9_\']*)',
-	        relevance: 0
-	      },
-	      {
-	        begin: '[A-Z][a-zA-Z0-9_\']*',
-	        relevance: 0
-	      }
-	    ]
-	  };
-	};
-
-/***/ },
-/* 301 */
+/* 237 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36555,7 +29595,7 @@
 	};
 
 /***/ },
-/* 302 */
+/* 238 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36630,7 +29670,7 @@
 	};
 
 /***/ },
-/* 303 */
+/* 239 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36693,60 +29733,177 @@
 	};
 
 /***/ },
-/* 304 */
+/* 240 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
-	  var KEYWORDS =
-	    'abort acronym acronyms alias all and assign binary card diag display else1 eps eq equation equations file files ' +
-	    'for1 free ge gt if inf integer le loop lt maximizing minimizing model models na ne negative no not option ' +
-	    'options or ord parameter parameters positive prod putpage puttl repeat sameas scalar scalars semicont semiint ' +
-	    'set1 sets smax smin solve sos1 sos2 sum system table then until using variable variables while1 xor yes';
+	  var KEYWORDS = {
+	    'keyword':
+	      'abort acronym acronyms alias all and assign binary card diag display ' +
+	      'else eq file files for free ge gt if integer le loop lt maximizing ' +
+	      'minimizing model models ne negative no not option options or ord ' +
+	      'positive prod put putpage puttl repeat sameas semicont semiint smax ' +
+	      'smin solve sos1 sos2 sum system table then until using while xor yes',
+	    'literal': 'eps inf na',
+	    'built-in':
+	      'abs arccos arcsin arctan arctan2 Beta betaReg binomial ceil centropy ' +
+	      'cos cosh cvPower div div0 eDist entropy errorf execSeed exp fact ' +
+	      'floor frac gamma gammaReg log logBeta logGamma log10 log2 mapVal max ' +
+	      'min mod ncpCM ncpF ncpVUpow ncpVUsin normal pi poly power ' +
+	      'randBinomial randLinear randTriangle round rPower sigmoid sign ' +
+	      'signPower sin sinh slexp sllog10 slrec sqexp sqlog10 sqr sqrec sqrt ' +
+	      'tan tanh trunc uniform uniformInt vcPower bool_and bool_eqv bool_imp ' +
+	      'bool_not bool_or bool_xor ifThen rel_eq rel_ge rel_gt rel_le rel_lt ' +
+	      'rel_ne gday gdow ghour gleap gmillisec gminute gmonth gsecond gyear ' +
+	      'jdate jnow jstart jtime errorLevel execError gamsRelease gamsVersion ' +
+	      'handleCollect handleDelete handleStatus handleSubmit heapFree ' +
+	      'heapLimit heapSize jobHandle jobKill jobStatus jobTerminate ' +
+	      'licenseLevel licenseStatus maxExecError sleep timeClose timeComp ' +
+	      'timeElapsed timeExec timeStart'
+	  };
+	  var PARAMS = {
+	    className: 'params',
+	    begin: /\(/, end: /\)/,
+	    excludeBegin: true,
+	    excludeEnd: true,
+	  };
+	  var SYMBOLS = {
+	    className: 'symbol',
+	    variants: [
+	      {begin: /\=[lgenxc]=/},
+	      {begin: /\$/},
+	    ]
+	  };
+	  var QSTR = { // One-line quoted comment string
+	    className: 'comment',
+	    variants: [
+	      {begin: '\'', end: '\''},
+	      {begin: '"', end: '"'},
+	    ],
+	    illegal: '\\n',
+	    contains: [hljs.BACKSLASH_ESCAPE]
+	  };
+	  var ASSIGNMENT = {
+	    begin: '/',
+	    end: '/',
+	    keywords: KEYWORDS,
+	    contains: [
+	      QSTR,
+	      hljs.C_LINE_COMMENT_MODE,
+	      hljs.C_BLOCK_COMMENT_MODE,
+	      hljs.QUOTE_STRING_MODE,
+	      hljs.APOS_STRING_MODE,
+	      hljs.C_NUMBER_MODE,
+	    ],
+	  };
+	  var DESCTEXT = { // Parameter/set/variable description text
+	    begin: /[a-z][a-z0-9_]*(\([a-z0-9_, ]*\))?[ \t]+/,
+	    excludeBegin: true,
+	    end: '$',
+	    endsWithParent: true,
+	    contains: [
+	      QSTR,
+	      ASSIGNMENT,
+	      {
+	        className: 'comment',
+	        begin: /([ ]*[a-z0-9&#*=?@>\\<:\-,()$\[\]_.{}!+%^]+)+/,
+	      },
+	    ],
+	  };
 	
 	  return {
 	    aliases: ['gms'],
 	    case_insensitive: true,
 	    keywords: KEYWORDS,
 	    contains: [
+	      hljs.COMMENT(/^\$ontext/, /^\$offtext/),
 	      {
-	        beginKeywords: 'sets parameters variables equations',
-	        end: ';',
+	        className: 'meta',
+	        begin: '^\\$[a-z0-9]+',
+	        end: '$',
+	        returnBegin: true,
 	        contains: [
 	          {
-	            begin: '/',
-	            end: '/',
-	            contains: [hljs.NUMBER_MODE]
+	            className: 'meta-keyword',
+	            begin: '^\\$[a-z0-9]+',
 	          }
 	        ]
 	      },
+	      hljs.COMMENT('^\\*', '$'),
+	      hljs.C_LINE_COMMENT_MODE,
+	      hljs.C_BLOCK_COMMENT_MODE,
+	      hljs.QUOTE_STRING_MODE,
+	      hljs.APOS_STRING_MODE,
+	      // Declarations
 	      {
-	        className: 'string',
-	        begin: '\\*{3}', end: '\\*{3}'
+	        beginKeywords:
+	          'set sets parameter parameters variable variables ' +
+	          'scalar scalars equation equations',
+	        end: ';',
+	        contains: [
+	          hljs.COMMENT('^\\*', '$'),
+	          hljs.C_LINE_COMMENT_MODE,
+	          hljs.C_BLOCK_COMMENT_MODE,
+	          hljs.QUOTE_STRING_MODE,
+	          hljs.APOS_STRING_MODE,
+	          ASSIGNMENT,
+	          DESCTEXT,
+	        ]
 	      },
-	      hljs.NUMBER_MODE,
+	      { // table environment
+	        beginKeywords: 'table',
+	        end: ';',
+	        returnBegin: true,
+	        contains: [
+	          { // table header row
+	            beginKeywords: 'table',
+	            end: '$',
+	            contains: [DESCTEXT],
+	          },
+	          hljs.COMMENT('^\\*', '$'),
+	          hljs.C_LINE_COMMENT_MODE,
+	          hljs.C_BLOCK_COMMENT_MODE,
+	          hljs.QUOTE_STRING_MODE,
+	          hljs.APOS_STRING_MODE,
+	          hljs.C_NUMBER_MODE,
+	          // Table does not contain DESCTEXT or ASSIGNMENT
+	        ]
+	      },
+	      // Function definitions
 	      {
-	        className: 'number',
-	        begin: '\\$[a-zA-Z0-9]+'
-	      }
+	        className: 'function',
+	        begin: /^[a-z][a-z0-9_,\-+' ()$]+\.{2}/,
+	        returnBegin: true,
+	        contains: [
+	              { // Function title
+	                className: 'title',
+	                begin: /^[a-z][a-z0-9_]+/,
+	              },
+	              PARAMS,
+	              SYMBOLS,
+	            ],
+	      },
+	      hljs.C_NUMBER_MODE,
+	      SYMBOLS,
 	    ]
 	  };
 	};
 
 /***/ },
-/* 305 */
+/* 241 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  var KEYWORDS = {
-	    keyword: 'and bool break|0 call callexe checkinterrupt clear clearg closeall cls comlog compile ' +
-	              'continue create debug declare delete disable dlibrary|10 dllcall do|0 dos ed edit else|0 ' +
-	              'elseif enable end endfor|10 endif|10 endp|10 endo|10 errorlog|10 errorlogat expr external fn ' +
-	              'for|0 format goto gosub|0 graph if|0 keyword let lib library line load loadarray loadexe ' +
-	              'loadf|10 loadk|10 loadm|10 loadp loads loadx local locate loopnextindex lprint lpwidth lshow ' +
+	    keyword: 'and bool break call callexe checkinterrupt clear clearg closeall cls comlog compile ' +
+	              'continue create debug declare delete disable dlibrary dllcall do dos ed edit else ' +
+	              'elseif enable end endfor endif endp endo errorlog errorlogat expr external fn ' +
+	              'for format goto gosub graph if keyword let lib library line load loadarray loadexe ' +
+	              'loadf loadk loadm loadp loads loadx local locate loopnextindex lprint lpwidth lshow ' +
 	              'matrix msym ndpclex new not open or output outwidth plot plotsym pop prcsn print ' +
-	              'printdos proc|10 push retp|10 return|0 rndcon rndmod rndmult rndseed run save saveall screen ' +
-	              'scroll setarray show sparse stop string struct system trace trap|10 threadfor|10 ' +
-	              'threadendfor|10 threadbegin|10 threadjoin|10 threadstat|10 threadend|10 until use while winprint',
+	              'printdos proc push retp return rndcon rndmod rndmult rndseed run save saveall screen ' +
+	              'scroll setarray show sparse stop string struct system trace trap threadfor ' +
+	              'threadendfor threadbegin threadjoin threadstat threadend until use while winprint',
 	    built_in: 'abs acf aconcat aeye amax amean AmericanBinomCall AmericanBinomCall_Greeks AmericanBinomCall_ImpVol ' +
 	              'AmericanBinomPut AmericanBinomPut_Greeks AmericanBinomPut_ImpVol AmericanBSCall AmericanBSCall_Greeks ' +
 	              'AmericanBSCall_ImpVol AmericanBSPut AmericanBSPut_Greeks AmericanBSPut_ImpVol amin amult annotationGetDefaults ' +
@@ -36762,16 +29919,16 @@
 	              'complex con cond conj cons ConScore contour conv convertsatostr convertstrtosa corrm corrms corrvc corrx corrxs ' +
 	              'cos cosh counts countwts crossprd crout croutp csrcol csrlin csvReadM csvReadSA cumprodc cumsumc curve cvtos ' +
 	              'datacreate datacreatecomplex datalist dataload dataloop dataopen datasave date datestr datestring datestrymd ' +
-	              'dayinyr dayofweek dbAddDatabase|10 dbClose|10 dbCommit|10 dbCreateQuery|10 dbExecQuery|10 dbGetConnectOptions|10 dbGetDatabaseName|10 ' +
-	              'dbGetDriverName|10 dbGetDrivers|10 dbGetHostName|10 dbGetLastErrorNum|10 dbGetLastErrorText|10 dbGetNumericalPrecPolicy|10 ' +
-	              'dbGetPassword|10 dbGetPort|10 dbGetTableHeaders|10 dbGetTables|10 dbGetUserName|10 dbHasFeature|10 dbIsDriverAvailable|10 dbIsOpen|10 ' +
-	              'dbIsOpenError|10 dbOpen|10 dbQueryBindValue|10 dbQueryClear|10 dbQueryCols|10 dbQueryExecPrepared|10 dbQueryFetchAllM|10 dbQueryFetchAllSA|10 ' +
-	              'dbQueryFetchOneM|10 dbQueryFetchOneSA|10 dbQueryFinish|10 dbQueryGetBoundValue|10 dbQueryGetBoundValues|10 dbQueryGetField|10 ' +
-	              'dbQueryGetLastErrorNum|10 dbQueryGetLastErrorText|10 dbQueryGetLastInsertID|10 dbQueryGetLastQuery|10 dbQueryGetPosition|10 ' +
-	              'dbQueryIsActive|10 dbQueryIsForwardOnly|10 dbQueryIsNull|10 dbQueryIsSelect|10 dbQueryIsValid|10 dbQueryPrepare|10 dbQueryRows|10 ' +
-	              'dbQuerySeek|10 dbQuerySeekFirst|10 dbQuerySeekLast|10 dbQuerySeekNext|10 dbQuerySeekPrevious|10 dbQuerySetForwardOnly|10 ' +
-	              'dbRemoveDatabase|10 dbRollback|10 dbSetConnectOptions|10 dbSetDatabaseName|10 dbSetHostName|10 dbSetNumericalPrecPolicy|10 ' +
-	              'dbSetPort|10 dbSetUserName|10 dbTransaction|10 DeleteFile delif delrows denseToSp denseToSpRE denToZero design det detl ' +
+	              'dayinyr dayofweek dbAddDatabase dbClose dbCommit dbCreateQuery dbExecQuery dbGetConnectOptions dbGetDatabaseName ' +
+	              'dbGetDriverName dbGetDrivers dbGetHostName dbGetLastErrorNum dbGetLastErrorText dbGetNumericalPrecPolicy ' +
+	              'dbGetPassword dbGetPort dbGetTableHeaders dbGetTables dbGetUserName dbHasFeature dbIsDriverAvailable dbIsOpen ' +
+	              'dbIsOpenError dbOpen dbQueryBindValue dbQueryClear dbQueryCols dbQueryExecPrepared dbQueryFetchAllM dbQueryFetchAllSA ' +
+	              'dbQueryFetchOneM dbQueryFetchOneSA dbQueryFinish dbQueryGetBoundValue dbQueryGetBoundValues dbQueryGetField ' +
+	              'dbQueryGetLastErrorNum dbQueryGetLastErrorText dbQueryGetLastInsertID dbQueryGetLastQuery dbQueryGetPosition ' +
+	              'dbQueryIsActive dbQueryIsForwardOnly dbQueryIsNull dbQueryIsSelect dbQueryIsValid dbQueryPrepare dbQueryRows ' +
+	              'dbQuerySeek dbQuerySeekFirst dbQuerySeekLast dbQuerySeekNext dbQuerySeekPrevious dbQuerySetForwardOnly ' +
+	              'dbRemoveDatabase dbRollback dbSetConnectOptions dbSetDatabaseName dbSetHostName dbSetNumericalPrecPolicy ' +
+	              'dbSetPort dbSetUserName dbTransaction DeleteFile delif delrows denseToSp denseToSpRE denToZero design det detl ' +
 	              'dfft dffti diag diagrv digamma doswin DOSWinCloseall DOSWinOpen dotfeq dotfeqmt dotfge dotfgemt dotfgt dotfgtmt ' +
 	              'dotfle dotflemt dotflt dotfltmt dotfne dotfnemt draw drop dsCreate dstat dstatmt dstatmtControlCreate dtdate dtday ' +
 	              'dttime dttodtv dttostr dttoutc dtvnormal dtvtodt dtvtoutc dummy dummybr dummydn eig eigh eighv eigv elapsedTradingDays ' +
@@ -36959,7 +30116,7 @@
 	};
 
 /***/ },
-/* 306 */
+/* 242 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37030,7 +30187,7 @@
 	};
 
 /***/ },
-/* 307 */
+/* 243 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
@@ -37039,8 +30196,9 @@
 	    keywords: 'Feature Background Ability Business\ Need Scenario Scenarios Scenario\ Outline Scenario\ Template Examples Given And Then But When',
 	    contains: [
 	      {
-	        className: 'keyword',
-	        begin: '\\*'
+	        className: 'symbol',
+	        begin: '\\*',
+	        relevance: 0
 	      },
 	      {
 	        className: 'meta',
@@ -37070,7 +30228,7 @@
 	};
 
 /***/ },
-/* 308 */
+/* 244 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37191,7 +30349,7 @@
 	};
 
 /***/ },
-/* 309 */
+/* 245 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37233,7 +30391,7 @@
 	};
 
 /***/ },
-/* 310 */
+/* 246 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37260,7 +30418,7 @@
 	};
 
 /***/ },
-/* 311 */
+/* 247 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37299,7 +30457,7 @@
 	};
 
 /***/ },
-/* 312 */
+/* 248 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37370,7 +30528,7 @@
 	                illegal: ':',
 	                contains: [
 	                    {beginKeywords: 'extends implements'},
-	                    hljs.UNDERSCORE_TITLE_MODE,
+	                    hljs.UNDERSCORE_TITLE_MODE
 	                ]
 	            },
 	            hljs.C_NUMBER_MODE,
@@ -37390,14 +30548,14 @@
 	                // highlight labeled statements
 	                className: 'symbol', begin: '^\\s*[A-Za-z0-9_$]+:',
 	                relevance: 0
-	            },
+	            }
 	        ],
 	        illegal: /#|<\//
 	    }
 	};
 
 /***/ },
-/* 313 */
+/* 249 */
 /***/ function(module, exports) {
 
 	module.exports = // TODO support filter tags like :javascript, support inline HTML
@@ -37508,7 +30666,7 @@
 	};
 
 /***/ },
-/* 314 */
+/* 250 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37546,7 +30704,7 @@
 	};
 
 /***/ },
-/* 315 */
+/* 251 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37672,7 +30830,7 @@
 	};
 
 /***/ },
-/* 316 */
+/* 252 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37734,12 +30892,13 @@
 	};
 
 /***/ },
-/* 317 */
+/* 253 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  return {
 	    case_insensitive: true,
+	    lexemes: /[\w\._]+/,
 	    keywords: 'goto gosub return break repeat loop continue wait await dim sdim foreach dimtype dup dupptr end stop newmod delmod mref run exgoto on mcall assert logmes newlab resume yield onexit onerror onkey onclick oncmd exist delete mkdir chdir dirlist bload bsave bcopy memfile if else poke wpoke lpoke getstr chdpm memexpand memcpy memset notesel noteadd notedel noteload notesave randomize noteunsel noteget split strrep setease button chgdisp exec dialog mmload mmplay mmstop mci pset pget syscolor mes print title pos circle cls font sysfont objsize picload color palcolor palette redraw width gsel gcopy gzoom gmode bmpsave hsvcolor getkey listbox chkbox combox input mesbox buffer screen bgscr mouse objsel groll line clrobj boxf objprm objmode stick grect grotate gsquare gradf objimage objskip objenable celload celdiv celput newcom querycom delcom cnvstow comres axobj winobj sendmsg comevent comevarg sarrayconv callfunc cnvwtos comevdisp libptr system hspstat hspver stat cnt err strsize looplev sublev iparam wparam lparam refstr refdval int rnd strlen length length2 length3 length4 vartype gettime peek wpeek lpeek varptr varuse noteinfo instr abs limit getease str strmid strf getpath strtrim sin cos tan atan sqrt double absf expf logf limitf powf geteasef mousex mousey mousew hwnd hinstance hdc ginfo objinfo dirinfo sysinfo thismod __hspver__ __hsp30__ __date__ __time__ __line__ __file__ _debug __hspdef__ and or xor not screen_normal screen_palette screen_hide screen_fixedsize screen_tool screen_frame gmode_gdi gmode_mem gmode_rgb0 gmode_alpha gmode_rgb0alpha gmode_add gmode_sub gmode_pixela ginfo_mx ginfo_my ginfo_act ginfo_sel ginfo_wx1 ginfo_wy1 ginfo_wx2 ginfo_wy2 ginfo_vx ginfo_vy ginfo_sizex ginfo_sizey ginfo_winx ginfo_winy ginfo_mesx ginfo_mesy ginfo_r ginfo_g ginfo_b ginfo_paluse ginfo_dispx ginfo_dispy ginfo_cx ginfo_cy ginfo_intid ginfo_newid ginfo_sx ginfo_sy objinfo_mode objinfo_bmscr objinfo_hwnd notemax notesize dir_cur dir_exe dir_win dir_sys dir_cmdline dir_desktop dir_mydoc dir_tv font_normal font_bold font_italic font_underline font_strikeout font_antialias objmode_normal objmode_guifont objmode_usefont gsquare_grad msgothic msmincho do until while wend for next _break _continue switch case default swbreak swend ddim ldim alloc m_pi rad2deg deg2rad ease_linear ease_quad_in ease_quad_out ease_quad_inout ease_cubic_in ease_cubic_out ease_cubic_inout ease_quartic_in ease_quartic_out ease_quartic_inout ease_bounce_in ease_bounce_out ease_bounce_inout ease_shake_in ease_shake_out ease_shake_inout ease_loop',
 	    contains: [
 	      hljs.C_LINE_COMMENT_MODE,
@@ -37754,7 +30913,7 @@
 	        contains: [hljs.BACKSLASH_ESCAPE]
 	      },
 	
-	      hljs.COMMENT(';', '$'),
+	      hljs.COMMENT(';', '$', {relevance: 0}),
 	
 	      {
 	        // pre-processor
@@ -37783,7 +30942,7 @@
 	};
 
 /***/ },
-/* 318 */
+/* 254 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37828,7 +30987,7 @@
 	};
 
 /***/ },
-/* 319 */
+/* 255 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37889,7 +31048,7 @@
 	};
 
 /***/ },
-/* 320 */
+/* 256 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37959,7 +31118,7 @@
 	};
 
 /***/ },
-/* 321 */
+/* 257 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38039,7 +31198,7 @@
 	};
 
 /***/ },
-/* 322 */
+/* 258 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38048,7 +31207,8 @@
 	    'false synchronized int abstract float private char boolean static null if const ' +
 	    'for true while long strictfp finally protected import native final void ' +
 	    'enum else break transient catch instanceof byte super volatile case assert short ' +
-	    'package default double public try this switch continue throws protected public private';
+	    'package default double public try this switch continue throws protected public private ' +
+	    'module requires exports';
 	
 	  // https://docs.oracle.com/javase/7/docs/technotes/guides/language/underscores-literals.html
 	  var JAVA_NUMBER_RE = '\\b' +
@@ -38149,17 +31309,17 @@
 	};
 
 /***/ },
-/* 323 */
+/* 259 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  return {
-	    aliases: ['js'],
+	    aliases: ['js', 'jsx'],
 	    keywords: {
 	      keyword:
 	        'in of if for while finally var new function do return void else break catch ' +
 	        'instanceof with throw case default try this switch continue typeof delete ' +
-	        'let yield const export super debugger as async await ' +
+	        'let yield const export super debugger as async await static ' +
 	        // ECMAScript 6 modules import
 	        'import from as'
 	      ,
@@ -38217,9 +31377,12 @@
 	          hljs.C_BLOCK_COMMENT_MODE,
 	          hljs.REGEXP_MODE,
 	          { // E4X / JSX
-	            begin: /</, end: />\s*[);\]]/,
-	            relevance: 0,
-	            subLanguage: 'xml'
+	            begin: /</, end: /(\/\w+|\w+\/)>/,
+	            subLanguage: 'xml',
+	            contains: [
+	              {begin: /<\w+\s*\/>/, skip: true},
+	              {begin: /<\w+/, end: /(\/\w+|\w+\/)>/, skip: true, contains: ['self']}
+	            ]
 	          }
 	        ],
 	        relevance: 0
@@ -38245,9 +31408,7 @@
 	      {
 	        begin: /\$[(.]/ // relevance booster for a pattern common to JS libs: `$(something)` and `$.something`
 	      },
-	      {
-	        begin: '\\.' + hljs.IDENT_RE, relevance: 0 // hack: prevents detection of keywords after dots
-	      },
+	      hljs.METHOD_GUARD,
 	      { // ES6 class
 	        className: 'class',
 	        beginKeywords: 'class', end: /[{;=]/, excludeEnd: true,
@@ -38266,7 +31427,7 @@
 	};
 
 /***/ },
-/* 324 */
+/* 260 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38285,11 +31446,11 @@
 	    contains: [
 	      {
 	        className: 'attr',
-	        begin: '\\s*"', end: '"\\s*:\\s*', excludeBegin: true, excludeEnd: true,
+	        begin: /"/, end: /"/,
 	        contains: [hljs.BACKSLASH_ESCAPE],
 	        illegal: '\\n',
-	        starts: VALUE_CONTAINER
-	      }
+	      },
+	      hljs.inherit(VALUE_CONTAINER, {begin: /:/})
 	    ],
 	    illegal: '\\S'
 	  };
@@ -38307,7 +31468,7 @@
 	};
 
 /***/ },
-/* 325 */
+/* 261 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38489,20 +31650,87 @@
 	};
 
 /***/ },
-/* 326 */
+/* 262 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
-	  var KEYWORDS = 'val var get set class trait object open private protected public ' +
-	    'final enum if else do while for when break continue throw try catch finally ' +
-	    'import package is as in return fun override default companion reified inline volatile transient native ' +
-	    'Byte Short Char Int Long Boolean Float Double Void Unit Nothing';
+	  var KEYWORDS = {
+	    keyword:
+	      'abstract as val var vararg get set class object open private protected public noinline ' +
+	      'crossinline dynamic final enum if else do while for when throw try catch finally ' +
+	      'import package is in fun override companion reified inline ' +
+	      'interface annotation data sealed internal infix operator out by constructor super ' +
+	      // to be deleted soon
+	      'trait volatile transient native default',
+	    built_in:
+	      'Byte Short Char Int Long Boolean Float Double Void Unit Nothing',
+	    literal:
+	      'true false null'
+	  };
+	  var KEYWORDS_WITH_LABEL = {
+	    className: 'keyword',
+	    begin: /\b(break|continue|return|this)\b/,
+	    starts: {
+	      contains: [
+	        {
+	          className: 'symbol',
+	          begin: /@\w+/
+	        }
+	      ]
+	    }
+	  };
+	  var LABEL = {
+	    className: 'symbol', begin: hljs.UNDERSCORE_IDENT_RE + '@'
+	  };
+	
+	  // for string templates
+	  var SUBST = {
+	    className: 'subst',
+	    variants: [
+	      {begin: '\\$' + hljs.UNDERSCORE_IDENT_RE},
+	      {begin: '\\${', end: '}', contains: [hljs.APOS_STRING_MODE, hljs.C_NUMBER_MODE]}
+	    ]
+	  };
+	  var STRING = {
+	    className: 'string',
+	    variants: [
+	      {
+	        begin: '"""', end: '"""',
+	        contains: [SUBST]
+	      },
+	      // Can't use built-in modes easily, as we want to use STRING in the meta
+	      // context as 'meta-string' and there's no syntax to remove explicitly set
+	      // classNames in built-in modes.
+	      {
+	        begin: '\'', end: '\'',
+	        illegal: /\n/,
+	        contains: [hljs.BACKSLASH_ESCAPE]
+	      },
+	      {
+	        begin: '"', end: '"',
+	        illegal: /\n/,
+	        contains: [hljs.BACKSLASH_ESCAPE, SUBST]
+	      }
+	    ]
+	  };
+	
+	  var ANNOTATION_USE_SITE = {
+	    className: 'meta', begin: '@(?:file|property|field|get|set|receiver|param|setparam|delegate)\\s*:(?:\\s*' + hljs.UNDERSCORE_IDENT_RE + ')?'
+	  };
+	  var ANNOTATION = {
+	    className: 'meta', begin: '@' + hljs.UNDERSCORE_IDENT_RE,
+	    contains: [
+	      {
+	        begin: /\(/, end: /\)/,
+	        contains: [
+	          hljs.inherit(STRING, {className: 'meta-string'})
+	        ]
+	      }
+	    ]
+	  };
 	
 	  return {
-	    keywords: {
-	      keyword: KEYWORDS,
-	      literal: 'true false null'
-	    },
+	    keywords: KEYWORDS,
 	    contains : [
 	      hljs.COMMENT(
 	        '/\\*\\*',
@@ -38517,13 +31745,10 @@
 	      ),
 	      hljs.C_LINE_COMMENT_MODE,
 	      hljs.C_BLOCK_COMMENT_MODE,
-	      {
-	        className: 'type',
-	        begin: /</, end: />/,
-	        returnBegin: true,
-	        excludeEnd: false,
-	        relevance: 0
-	      },
+	      KEYWORDS_WITH_LABEL,
+	      LABEL,
+	      ANNOTATION_USE_SITE,
+	      ANNOTATION,
 	      {
 	        className: 'function',
 	        beginKeywords: 'fun', end: '[(]|$',
@@ -38546,27 +31771,37 @@
 	          {
 	            className: 'params',
 	            begin: /\(/, end: /\)/,
+	            endsParent: true,
 	            keywords: KEYWORDS,
 	            relevance: 0,
-	            illegal: /\([^\(,\s:]+,/,
 	            contains: [
 	              {
-	                className: 'type',
-	                begin: /:\s*/, end: /\s*[=\)]/, excludeBegin: true, returnEnd: true,
+	                begin: /:/, end: /[=,\/]/, endsWithParent: true,
+	                contains: [
+	                  {className: 'type', begin: hljs.UNDERSCORE_IDENT_RE},
+	                  hljs.C_LINE_COMMENT_MODE,
+	                  hljs.C_BLOCK_COMMENT_MODE
+	                ],
 	                relevance: 0
-	              }
+	              },
+	              hljs.C_LINE_COMMENT_MODE,
+	              hljs.C_BLOCK_COMMENT_MODE,
+	              ANNOTATION_USE_SITE,
+	              ANNOTATION,
+	              STRING,
+	              hljs.C_NUMBER_MODE
 	            ]
 	          },
-	          hljs.C_LINE_COMMENT_MODE,
 	          hljs.C_BLOCK_COMMENT_MODE
 	        ]
 	      },
 	      {
 	        className: 'class',
-	        beginKeywords: 'class trait', end: /[:\{(]|$/,
+	        beginKeywords: 'class interface trait', end: /[:\{(]|$/, // remove 'trait' when removed from KEYWORDS
 	        excludeEnd: true,
 	        illegal: 'extends implements',
 	        contains: [
+	          {beginKeywords: 'public protected internal private constructor'},
 	          hljs.UNDERSCORE_TITLE_MODE,
 	          {
 	            className: 'type',
@@ -38576,13 +31811,12 @@
 	          {
 	            className: 'type',
 	            begin: /[,:]\s*/, end: /[<\(,]|$/, excludeBegin: true, returnEnd: true
-	          }
+	          },
+	          ANNOTATION_USE_SITE,
+	          ANNOTATION
 	        ]
 	      },
-	      {
-	        className: 'variable', beginKeywords: 'var val', end: /\s*[=:$]/, excludeEnd: true
-	      },
-	      hljs.QUOTE_STRING_MODE,
+	      STRING,
 	      {
 	        className: 'meta',
 	        begin: "^#!/usr/bin/env", end: '$',
@@ -38594,7 +31828,7 @@
 	};
 
 /***/ },
-/* 327 */
+/* 263 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38766,7 +32000,7 @@
 	};
 
 /***/ },
-/* 328 */
+/* 264 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38828,11 +32062,19 @@
 	  /* Rule-Level Modes */
 	
 	  var RULE_MODE = {
-	    className: 'attribute',
-	    begin: INTERP_IDENT_RE, end: ':', excludeEnd: true,
-	    contains: [hljs.C_LINE_COMMENT_MODE, hljs.C_BLOCK_COMMENT_MODE],
-	    illegal: /\S/,
-	    starts: {end: '[;}]', returnEnd: true, contains: VALUE, illegal: '[<=$]'}
+	    begin: INTERP_IDENT_RE + '\\s*:', returnBegin: true, end: '[;}]',
+	    relevance: 0,
+	    contains: [
+	      {
+	        className: 'attribute',
+	        begin: INTERP_IDENT_RE, end: ':', excludeEnd: true,
+	        starts: {
+	          endsWithParent: true, illegal: '[<=$]',
+	          relevance: 0,
+	          contains: VALUE
+	        }
+	      }
+	    ]
 	  };
 	
 	  var AT_RULE_MODE = {
@@ -38860,7 +32102,7 @@
 	    // then fall into the scary lookahead-discriminator variant.
 	    // this mode also handles mixin definitions and calls
 	    variants: [{
-	      begin: '[\\.#:&\\[]', end: '[;{}]'  // mixin calls end with ';'
+	      begin: '[\\.#:&\\[>]', end: '[;{}]'  // mixin calls end with ';'
 	      }, {
 	      begin: INTERP_IDENT_RE + '[^;]*{',
 	      end: '{'
@@ -38879,6 +32121,7 @@
 	      IDENT_MODE('selector-class', '\\.' + INTERP_IDENT_RE, 0),
 	      IDENT_MODE('selector-tag',  '&', 0),
 	      {className: 'selector-attr', begin: '\\[', end: '\\]'},
+	      {className: 'selector-pseudo', begin: /:(:)?[a-zA-Z0-9\_\-\+\(\)"'.]+/},
 	      {begin: '\\(', end: '\\)', contains: VALUE_WITH_RULESETS}, // argument list of parametric mixins
 	      {begin: '!important'} // eat !important after mixin call or it will be colored as tag
 	    ]
@@ -38889,8 +32132,8 @@
 	    hljs.C_BLOCK_COMMENT_MODE,
 	    AT_RULE_MODE,
 	    VAR_RULE_MODE,
-	    SELECTOR_MODE,
-	    RULE_MODE
+	    RULE_MODE,
+	    SELECTOR_MODE
 	  );
 	
 	  return {
@@ -38901,7 +32144,7 @@
 	};
 
 /***/ },
-/* 329 */
+/* 265 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39008,7 +32251,7 @@
 	};
 
 /***/ },
-/* 330 */
+/* 266 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39132,7 +32375,8 @@
 	        contains: [
 	          TITLE2,
 	          TITLE1
-	        ]
+	        ],
+	        relevance: 0
 	      },
 	      {
 	        beginKeywords: 'command on', end: '$',
@@ -39163,12 +32407,12 @@
 	      hljs.C_NUMBER_MODE,
 	      TITLE1
 	    ].concat(COMMENT_MODES),
-	    illegal: ';$|^\\[|^='
+	    illegal: ';$|^\\[|^=|&|{'
 	  };
 	};
 
 /***/ },
-/* 331 */
+/* 267 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39321,7 +32565,7 @@
 	};
 
 /***/ },
-/* 332 */
+/* 268 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39381,7 +32625,7 @@
 	};
 
 /***/ },
-/* 333 */
+/* 269 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39430,112 +32674,7 @@
 	};
 
 /***/ },
-/* 334 */
-/***/ function(module, exports) {
-
-	module.exports = function(hljs) {
-	  return {
-	    aliases: ['md', 'mkdown', 'mkd'],
-	    contains: [
-	      // highlight headers
-	      {
-	        className: 'section',
-	        variants: [
-	          { begin: '^#{1,6}', end: '$' },
-	          { begin: '^.+?\\n[=-]{2,}$' }
-	        ]
-	      },
-	      // inline html
-	      {
-	        begin: '<', end: '>',
-	        subLanguage: 'xml',
-	        relevance: 0
-	      },
-	      // lists (indicators only)
-	      {
-	        className: 'bullet',
-	        begin: '^([*+-]|(\\d+\\.))\\s+'
-	      },
-	      // strong segments
-	      {
-	        className: 'strong',
-	        begin: '[*_]{2}.+?[*_]{2}'
-	      },
-	      // emphasis segments
-	      {
-	        className: 'emphasis',
-	        variants: [
-	          { begin: '\\*.+?\\*' },
-	          { begin: '_.+?_'
-	          , relevance: 0
-	          }
-	        ]
-	      },
-	      // blockquotes
-	      {
-	        className: 'quote',
-	        begin: '^>\\s+', end: '$'
-	      },
-	      // code snippets
-	      {
-	        className: 'code',
-	        variants: [
-	          { begin: '`.+?`' },
-	          { begin: '^( {4}|\t)', end: '$'
-	          , relevance: 0
-	          }
-	        ]
-	      },
-	      // horizontal rules
-	      {
-	        begin: '^[-\\*]{3,}', end: '$'
-	      },
-	      // using links - title and link
-	      {
-	        begin: '\\[.+?\\][\\(\\[].*?[\\)\\]]',
-	        returnBegin: true,
-	        contains: [
-	          {
-	            className: 'string',
-	            begin: '\\[', end: '\\]',
-	            excludeBegin: true,
-	            returnEnd: true,
-	            relevance: 0
-	          },
-	          {
-	            className: 'link',
-	            begin: '\\]\\(', end: '\\)',
-	            excludeBegin: true, excludeEnd: true
-	          },
-	          {
-	            className: 'symbol',
-	            begin: '\\]\\[', end: '\\]',
-	            excludeBegin: true, excludeEnd: true
-	          }
-	        ],
-	        relevance: 10
-	      },
-	      {
-	        begin: '^\\[\.+\\]:',
-	        returnBegin: true,
-	        contains: [
-	          {
-	            className: 'symbol',
-	            begin: '\\[', end: '\\]:',
-	            excludeBegin: true, excludeEnd: true,
-	            starts: {
-	              className: 'link',
-	              end: '$'
-	            }
-	          }
-	        ]
-	      }
-	    ]
-	  };
-	};
-
-/***/ },
-/* 335 */
+/* 270 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39597,7 +32736,7 @@
 	};
 
 /***/ },
-/* 336 */
+/* 271 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39689,7 +32828,7 @@
 	};
 
 /***/ },
-/* 337 */
+/* 272 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39918,7 +33057,7 @@
 	};
 
 /***/ },
-/* 338 */
+/* 273 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -40004,7 +33143,7 @@
 	};
 
 /***/ },
-/* 339 */
+/* 274 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -40037,7 +33176,7 @@
 	            // 32-bit integer instructions
 	            'addi?u?|andi?|b(al)?|beql?|bgez(al)?l?|bgtzl?|blezl?|bltz(al)?l?|' +
 	            'bnel?|cl[oz]|divu?|ext|ins|j(al)?|jalr(\.hb)?|jr(\.hb)?|lbu?|lhu?|' +
-	            'll|lui|lw[lr]?|maddu?|mfhi|mflo|movn|movz|msubu?|mthi|mtlo|mul|' +
+	            'll|lui|lw[lr]?|maddu?|mfhi|mflo|movn|movz|move|msubu?|mthi|mtlo|mul|' +
 	            'multu?|nop|nor|ori?|rotrv?|sb|sc|se[bh]|sh|sllv?|slti?u?|srav?|' +
 	            'srlv?|subu?|sw[lr]?|xori?|wsbh|' +
 	            // floating-point instructions
@@ -40094,7 +33233,7 @@
 	};
 
 /***/ },
-/* 340 */
+/* 275 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -40117,747 +33256,7 @@
 	};
 
 /***/ },
-/* 341 */
-/***/ function(module, exports) {
-
-	module.exports = function(hljs) {
-	  return {
-	    subLanguage: 'xml',
-	    contains: [
-	      {
-	        className: 'meta',
-	        begin: '^__(END|DATA)__$'
-	      },
-	    // mojolicious line
-	      {
-	        begin: "^\\s*%{1,2}={0,2}", end: '$',
-	        subLanguage: 'perl'
-	      },
-	    // mojolicious block
-	      {
-	        begin: "<%{1,2}={0,2}",
-	        end: "={0,1}%>",
-	        subLanguage: 'perl',
-	        excludeBegin: true,
-	        excludeEnd: true
-	      }
-	    ]
-	  };
-	};
-
-/***/ },
-/* 342 */
-/***/ function(module, exports) {
-
-	module.exports = function(hljs) {
-	  var NUMBER = {
-	    className: 'number', relevance: 0,
-	    variants: [
-	      {
-	        begin: '[$][a-fA-F0-9]+'
-	      },
-	      hljs.NUMBER_MODE
-	    ]
-	  };
-	
-	  return {
-	    case_insensitive: true,
-	    keywords: {
-	      keyword: 'public private property continue exit extern new try catch ' +
-	        'eachin not abstract final select case default const local global field ' +
-	        'end if then else elseif endif while wend repeat until forever for ' +
-	        'to step next return module inline throw import',
-	
-	      built_in: 'DebugLog DebugStop Error Print ACos ACosr ASin ASinr ATan ATan2 ATan2r ATanr Abs Abs Ceil ' +
-	        'Clamp Clamp Cos Cosr Exp Floor Log Max Max Min Min Pow Sgn Sgn Sin Sinr Sqrt Tan Tanr Seed PI HALFPI TWOPI',
-	
-	      literal: 'true false null and or shl shr mod'
-	    },
-	    illegal: /\/\*/,
-	    contains: [
-	      hljs.COMMENT('#rem', '#end'),
-	      hljs.COMMENT(
-	        "'",
-	        '$',
-	        {
-	          relevance: 0
-	        }
-	      ),
-	      {
-	        className: 'function',
-	        beginKeywords: 'function method', end: '[(=:]|$',
-	        illegal: /\n/,
-	        contains: [
-	          hljs.UNDERSCORE_TITLE_MODE
-	        ]
-	      },
-	      {
-	        className: 'class',
-	        beginKeywords: 'class interface', end: '$',
-	        contains: [
-	          {
-	            beginKeywords: 'extends implements'
-	          },
-	          hljs.UNDERSCORE_TITLE_MODE
-	        ]
-	      },
-	      {
-	        className: 'built_in',
-	        begin: '\\b(self|super)\\b'
-	      },
-	      {
-	        className: 'meta',
-	        begin: '\\s*#', end: '$',
-	        keywords: {'meta-keyword': 'if else elseif endif end then'}
-	      },
-	      {
-	        className: 'meta',
-	        begin: '^\\s*strict\\b'
-	      },
-	      {
-	        beginKeywords: 'alias', end: '=',
-	        contains: [hljs.UNDERSCORE_TITLE_MODE]
-	      },
-	      hljs.QUOTE_STRING_MODE,
-	      NUMBER
-	    ]
-	  }
-	};
-
-/***/ },
-/* 343 */
-/***/ function(module, exports) {
-
-	module.exports = function(hljs) {
-	  var VAR = {
-	    className: 'variable',
-	    variants: [
-	      {begin: /\$\d+/},
-	      {begin: /\$\{/, end: /}/},
-	      {begin: '[\\$\\@]' + hljs.UNDERSCORE_IDENT_RE}
-	    ]
-	  };
-	  var DEFAULT = {
-	    endsWithParent: true,
-	    lexemes: '[a-z/_]+',
-	    keywords: {
-	      literal:
-	        'on off yes no true false none blocked debug info notice warn error crit ' +
-	        'select break last permanent redirect kqueue rtsig epoll poll /dev/poll'
-	    },
-	    relevance: 0,
-	    illegal: '=>',
-	    contains: [
-	      hljs.HASH_COMMENT_MODE,
-	      {
-	        className: 'string',
-	        contains: [hljs.BACKSLASH_ESCAPE, VAR],
-	        variants: [
-	          {begin: /"/, end: /"/},
-	          {begin: /'/, end: /'/}
-	        ]
-	      },
-	      // this swallows entire URLs to avoid detecting numbers within
-	      {
-	        begin: '([a-z]+):/', end: '\\s', endsWithParent: true, excludeEnd: true,
-	        contains: [VAR]
-	      },
-	      {
-	        className: 'regexp',
-	        contains: [hljs.BACKSLASH_ESCAPE, VAR],
-	        variants: [
-	          {begin: "\\s\\^", end: "\\s|{|;", returnEnd: true},
-	          // regexp locations (~, ~*)
-	          {begin: "~\\*?\\s+", end: "\\s|{|;", returnEnd: true},
-	          // *.example.com
-	          {begin: "\\*(\\.[a-z\\-]+)+"},
-	          // sub.example.*
-	          {begin: "([a-z\\-]+\\.)+\\*"}
-	        ]
-	      },
-	      // IP
-	      {
-	        className: 'number',
-	        begin: '\\b\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}(:\\d{1,5})?\\b'
-	      },
-	      // units
-	      {
-	        className: 'number',
-	        begin: '\\b\\d+[kKmMgGdshdwy]*\\b',
-	        relevance: 0
-	      },
-	      VAR
-	    ]
-	  };
-	
-	  return {
-	    aliases: ['nginxconf'],
-	    contains: [
-	      hljs.HASH_COMMENT_MODE,
-	      {
-	        begin: hljs.UNDERSCORE_IDENT_RE + '\\s+{', returnBegin: true,
-	        end: '{',
-	        contains: [
-	          {
-	            className: 'section',
-	            begin: hljs.UNDERSCORE_IDENT_RE
-	          }
-	        ],
-	        relevance: 0
-	      },
-	      {
-	        begin: hljs.UNDERSCORE_IDENT_RE + '\\s', end: ';|{', returnBegin: true,
-	        contains: [
-	          {
-	            className: 'attribute',
-	            begin: hljs.UNDERSCORE_IDENT_RE,
-	            starts: DEFAULT
-	          }
-	        ],
-	        relevance: 0
-	      }
-	    ],
-	    illegal: '[^\\s\\}]'
-	  };
-	};
-
-/***/ },
-/* 344 */
-/***/ function(module, exports) {
-
-	module.exports = function(hljs) {
-	  return {
-	    aliases: ['nim'],
-	    keywords: {
-	      keyword: 'addr and as asm bind block break|0 case|0 cast const|0 continue|0 converter discard distinct|10 div do elif else|0 end|0 enum|0 except export finally for from generic if|0 import|0 in include|0 interface is isnot|10 iterator|10 let|0 macro method|10 mixin mod nil not notin|10 object|0 of or out proc|10 ptr raise ref|10 return shl shr static template try|0 tuple type|0 using|0 var|0 when while|0 with without xor yield',
-	      literal: 'shared guarded stdin stdout stderr result|10 true false'
-	    },
-	    contains: [ {
-	        className: 'meta', // Actually pragma
-	        begin: /{\./,
-	        end: /\.}/,
-	        relevance: 10
-	      }, {
-	        className: 'string',
-	        begin: /[a-zA-Z]\w*"/,
-	        end: /"/,
-	        contains: [{begin: /""/}]
-	      }, {
-	        className: 'string',
-	        begin: /([a-zA-Z]\w*)?"""/,
-	        end: /"""/
-	      },
-	      hljs.QUOTE_STRING_MODE,
-	      {
-	        className: 'type',
-	        begin: /\b[A-Z]\w+\b/,
-	        relevance: 0
-	      }, {
-	        className: 'built_in',
-	        begin: /\b(int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|float|float32|float64|bool|char|string|cstring|pointer|expr|stmt|void|auto|any|range|array|openarray|varargs|seq|set|clong|culong|cchar|cschar|cshort|cint|csize|clonglong|cfloat|cdouble|clongdouble|cuchar|cushort|cuint|culonglong|cstringarray|semistatic)\b/
-	      }, {
-	        className: 'number',
-	        relevance: 0,
-	        variants: [
-	          {begin: /\b(0[xX][0-9a-fA-F][_0-9a-fA-F]*)('?[iIuU](8|16|32|64))?/},
-	          {begin: /\b(0o[0-7][_0-7]*)('?[iIuUfF](8|16|32|64))?/},
-	          {begin: /\b(0(b|B)[01][_01]*)('?[iIuUfF](8|16|32|64))?/},
-	          {begin: /\b(\d[_\d]*)('?[iIuUfF](8|16|32|64))?/}
-	        ]
-	      },
-	      hljs.HASH_COMMENT_MODE
-	    ]
-	  }
-	};
-
-/***/ },
-/* 345 */
-/***/ function(module, exports) {
-
-	module.exports = function(hljs) {
-	  var NIX_KEYWORDS = {
-	    keyword:
-	      'rec with let in inherit assert if else then',
-	    literal:
-	      'true false or and null',
-	    built_in:
-	      'import abort baseNameOf dirOf isNull builtins map removeAttrs throw ' +
-	      'toString derivation'
-	  };
-	  var ANTIQUOTE = {
-	    className: 'subst',
-	    begin: /\$\{/,
-	    end: /}/,
-	    keywords: NIX_KEYWORDS
-	  };
-	  var ATTRS = {
-	    begin: /[a-zA-Z0-9-_]+(\s*=)/, returnBegin: true,
-	    relevance: 0,
-	    contains: [
-	      {
-	        className: 'attr',
-	        begin: /\S+/
-	      }
-	    ]
-	  };
-	  var STRING = {
-	    className: 'string',
-	    contains: [ANTIQUOTE],
-	    variants: [
-	      {begin: "''", end: "''"},
-	      {begin: '"', end: '"'}
-	    ]
-	  };
-	  var EXPRESSIONS = [
-	    hljs.NUMBER_MODE,
-	    hljs.HASH_COMMENT_MODE,
-	    hljs.C_BLOCK_COMMENT_MODE,
-	    STRING,
-	    ATTRS
-	  ];
-	  ANTIQUOTE.contains = EXPRESSIONS;
-	  return {
-	    aliases: ["nixos"],
-	    keywords: NIX_KEYWORDS,
-	    contains: EXPRESSIONS
-	  };
-	};
-
-/***/ },
-/* 346 */
-/***/ function(module, exports) {
-
-	module.exports = function(hljs) {
-	  var CONSTANTS = {
-	    className: 'variable',
-	    begin: '\\$(ADMINTOOLS|APPDATA|CDBURN_AREA|CMDLINE|COMMONFILES32|COMMONFILES64|COMMONFILES|COOKIES|DESKTOP|DOCUMENTS|EXEDIR|EXEFILE|EXEPATH|FAVORITES|FONTS|HISTORY|HWNDPARENT|INSTDIR|INTERNET_CACHE|LANGUAGE|LOCALAPPDATA|MUSIC|NETHOOD|OUTDIR|PICTURES|PLUGINSDIR|PRINTHOOD|PROFILE|PROGRAMFILES32|PROGRAMFILES64|PROGRAMFILES|QUICKLAUNCH|RECENT|RESOURCES_LOCALIZED|RESOURCES|SENDTO|SMPROGRAMS|SMSTARTUP|STARTMENU|SYSDIR|TEMP|TEMPLATES|VIDEOS|WINDIR)'
-	  };
-	
-	  var DEFINES = {
-	    // ${defines}
-	    className: 'variable',
-	    begin: '\\$+{[a-zA-Z0-9_]+}'
-	  };
-	
-	  var VARIABLES = {
-	    // $variables
-	    className: 'variable',
-	    begin: '\\$+[a-zA-Z0-9_]+',
-	    illegal: '\\(\\){}'
-	  };
-	
-	  var LANGUAGES = {
-	    // $(language_strings)
-	    className: 'variable',
-	    begin: '\\$+\\([a-zA-Z0-9_]+\\)'
-	  };
-	
-	  var PARAMETERS = {
-	    // command parameters
-	    className: 'built_in',
-	    begin: '(ARCHIVE|FILE_ATTRIBUTE_ARCHIVE|FILE_ATTRIBUTE_NORMAL|FILE_ATTRIBUTE_OFFLINE|FILE_ATTRIBUTE_READONLY|FILE_ATTRIBUTE_SYSTEM|FILE_ATTRIBUTE_TEMPORARY|HKCR|HKCU|HKDD|HKEY_CLASSES_ROOT|HKEY_CURRENT_CONFIG|HKEY_CURRENT_USER|HKEY_DYN_DATA|HKEY_LOCAL_MACHINE|HKEY_PERFORMANCE_DATA|HKEY_USERS|HKLM|HKPD|HKU|IDABORT|IDCANCEL|IDIGNORE|IDNO|IDOK|IDRETRY|IDYES|MB_ABORTRETRYIGNORE|MB_DEFBUTTON1|MB_DEFBUTTON2|MB_DEFBUTTON3|MB_DEFBUTTON4|MB_ICONEXCLAMATION|MB_ICONINFORMATION|MB_ICONQUESTION|MB_ICONSTOP|MB_OK|MB_OKCANCEL|MB_RETRYCANCEL|MB_RIGHT|MB_RTLREADING|MB_SETFOREGROUND|MB_TOPMOST|MB_USERICON|MB_YESNO|NORMAL|OFFLINE|READONLY|SHCTX|SHELL_CONTEXT|SYSTEM|TEMPORARY)'
-	  };
-	
-	  var COMPILER ={
-	    // !compiler_flags
-	    className: 'keyword',
-	    begin: '\\!(addincludedir|addplugindir|appendfile|cd|define|delfile|echo|else|endif|error|execute|finalize|getdllversionsystem|ifdef|ifmacrodef|ifmacrondef|ifndef|if|include|insertmacro|macroend|macro|makensis|packhdr|searchparse|searchreplace|tempfile|undef|verbose|warning)'
-	  };
-	
-	  return {
-	    case_insensitive: false,
-	    keywords: {
-	      keyword:
-	      'Abort AddBrandingImage AddSize AllowRootDirInstall AllowSkipFiles AutoCloseWindow BGFont BGGradient BrandingText BringToFront Call CallInstDLL Caption ChangeUI CheckBitmap ClearErrors CompletedText ComponentText CopyFiles CRCCheck CreateDirectory CreateFont CreateShortCut Delete DeleteINISec DeleteINIStr DeleteRegKey DeleteRegValue DetailPrint DetailsButtonText DirText DirVar DirVerify EnableWindow EnumRegKey EnumRegValue Exch Exec ExecShell ExecWait ExpandEnvStrings File FileBufSize FileClose FileErrorText FileOpen FileRead FileReadByte FileReadUTF16LE FileReadWord FileSeek FileWrite FileWriteByte FileWriteUTF16LE FileWriteWord FindClose FindFirst FindNext FindWindow FlushINI FunctionEnd GetCurInstType GetCurrentAddress GetDlgItem GetDLLVersion GetDLLVersionLocal GetErrorLevel GetFileTime GetFileTimeLocal GetFullPathName GetFunctionAddress GetInstDirError GetLabelAddress GetTempFileName Goto HideWindow Icon IfAbort IfErrors IfFileExists IfRebootFlag IfSilent InitPluginsDir InstallButtonText InstallColors InstallDir InstallDirRegKey InstProgressFlags InstType InstTypeGetText InstTypeSetText IntCmp IntCmpU IntFmt IntOp IsWindow LangString LicenseBkColor LicenseData LicenseForceSelection LicenseLangString LicenseText LoadLanguageFile LockWindow LogSet LogText ManifestDPIAware ManifestSupportedOS MessageBox MiscButtonText Name Nop OutFile Page PageCallbacks PageExEnd Pop Push Quit ReadEnvStr ReadINIStr ReadRegDWORD ReadRegStr Reboot RegDLL Rename RequestExecutionLevel ReserveFile Return RMDir SearchPath SectionEnd SectionGetFlags SectionGetInstTypes SectionGetSize SectionGetText SectionGroupEnd SectionIn SectionSetFlags SectionSetInstTypes SectionSetSize SectionSetText SendMessage SetAutoClose SetBrandingImage SetCompress SetCompressor SetCompressorDictSize SetCtlColors SetCurInstType SetDatablockOptimize SetDateSave SetDetailsPrint SetDetailsView SetErrorLevel SetErrors SetFileAttributes SetFont SetOutPath SetOverwrite SetPluginUnload SetRebootFlag SetRegView SetShellVarContext SetSilent ShowInstDetails ShowUninstDetails ShowWindow SilentInstall SilentUnInstall Sleep SpaceTexts StrCmp StrCmpS StrCpy StrLen SubCaption SubSectionEnd Unicode UninstallButtonText UninstallCaption UninstallIcon UninstallSubCaption UninstallText UninstPage UnRegDLL Var VIAddVersionKey VIFileVersion VIProductVersion WindowIcon WriteINIStr WriteRegBin WriteRegDWORD WriteRegExpandStr WriteRegStr WriteUninstaller XPStyle',
-	      literal:
-	      'admin all auto both colored current false force hide highest lastused leave listonly none normal notset off on open print show silent silentlog smooth textonly true user '
-	    },
-	    contains: [
-	      hljs.HASH_COMMENT_MODE,
-	      hljs.C_BLOCK_COMMENT_MODE,
-	      {
-	        className: 'string',
-	        begin: '"', end: '"',
-	        illegal: '\\n',
-	        contains: [
-	          { // $\n, $\r, $\t, $$
-	            begin: '\\$(\\\\(n|r|t)|\\$)'
-	          },
-	          CONSTANTS,
-	          DEFINES,
-	          VARIABLES,
-	          LANGUAGES
-	        ]
-	      },
-	      hljs.COMMENT(
-	        ';',
-	        '$',
-	        {
-	          relevance: 0
-	        }
-	      ),
-	      {
-	        className: 'function',
-	        beginKeywords: 'Function PageEx Section SectionGroup SubSection', end: '$'
-	      },
-	      COMPILER,
-	      DEFINES,
-	      VARIABLES,
-	      LANGUAGES,
-	      PARAMETERS,
-	      hljs.NUMBER_MODE,
-	      { // plug::ins
-	        begin: hljs.IDENT_RE + '::' + hljs.IDENT_RE
-	      }
-	    ]
-	  };
-	};
-
-/***/ },
-/* 347 */
-/***/ function(module, exports) {
-
-	module.exports = function(hljs) {
-	  var API_CLASS = {
-	    className: 'built_in',
-	    begin: '(AV|CA|CF|CG|CI|MK|MP|NS|UI|XC)\\w+',
-	  };
-	  var OBJC_KEYWORDS = {
-	    keyword:
-	      'int float while char export sizeof typedef const struct for union ' +
-	      'unsigned long volatile static bool mutable if do return goto void ' +
-	      'enum else break extern asm case short default double register explicit ' +
-	      'signed typename this switch continue wchar_t inline readonly assign ' +
-	      'readwrite self @synchronized id typeof ' +
-	      'nonatomic super unichar IBOutlet IBAction strong weak copy ' +
-	      'in out inout bycopy byref oneway __strong __weak __block __autoreleasing ' +
-	      '@private @protected @public @try @property @end @throw @catch @finally ' +
-	      '@autoreleasepool @synthesize @dynamic @selector @optional @required',
-	    literal:
-	      'false true FALSE TRUE nil YES NO NULL',
-	    built_in:
-	      'BOOL dispatch_once_t dispatch_queue_t dispatch_sync dispatch_async dispatch_once'
-	  };
-	  var LEXEMES = /[a-zA-Z@][a-zA-Z0-9_]*/;
-	  var CLASS_KEYWORDS = '@interface @class @protocol @implementation';
-	  return {
-	    aliases: ['mm', 'objc', 'obj-c'],
-	    keywords: OBJC_KEYWORDS,
-	    lexemes: LEXEMES,
-	    illegal: '</',
-	    contains: [
-	      API_CLASS,
-	      hljs.C_LINE_COMMENT_MODE,
-	      hljs.C_BLOCK_COMMENT_MODE,
-	      hljs.C_NUMBER_MODE,
-	      hljs.QUOTE_STRING_MODE,
-	      {
-	        className: 'string',
-	        variants: [
-	          {
-	            begin: '@"', end: '"',
-	            illegal: '\\n',
-	            contains: [hljs.BACKSLASH_ESCAPE]
-	          },
-	          {
-	            begin: '\'', end: '[^\\\\]\'',
-	            illegal: '[^\\\\][^\']'
-	          }
-	        ]
-	      },
-	      {
-	        className: 'meta',
-	        begin: '#',
-	        end: '$',
-	        contains: [
-	          {
-	            className: 'meta-string',
-	            variants: [
-	              { begin: '\"', end: '\"' },
-	              { begin: '<', end: '>' }
-	            ]
-	          }
-	        ]
-	      },
-	      {
-	        className: 'class',
-	        begin: '(' + CLASS_KEYWORDS.split(' ').join('|') + ')\\b', end: '({|$)', excludeEnd: true,
-	        keywords: CLASS_KEYWORDS, lexemes: LEXEMES,
-	        contains: [
-	          hljs.UNDERSCORE_TITLE_MODE
-	        ]
-	      },
-	      {
-	        begin: '\\.'+hljs.UNDERSCORE_IDENT_RE,
-	        relevance: 0
-	      }
-	    ]
-	  };
-	};
-
-/***/ },
-/* 348 */
-/***/ function(module, exports) {
-
-	module.exports = function(hljs) {
-	  /* missing support for heredoc-like string (OCaml 4.0.2+) */
-	  return {
-	    aliases: ['ml'],
-	    keywords: {
-	      keyword:
-	        'and as assert asr begin class constraint do done downto else end ' +
-	        'exception external for fun function functor if in include ' +
-	        'inherit! inherit initializer land lazy let lor lsl lsr lxor match method!|10 method ' +
-	        'mod module mutable new object of open! open or private rec sig struct ' +
-	        'then to try type val! val virtual when while with ' +
-	        /* camlp4 */
-	        'parser value',
-	      built_in:
-	        /* built-in types */
-	        'array bool bytes char exn|5 float int int32 int64 list lazy_t|5 nativeint|5 string unit ' +
-	        /* (some) types in Pervasives */
-	        'in_channel out_channel ref',
-	      literal:
-	        'true false'
-	    },
-	    illegal: /\/\/|>>/,
-	    lexemes: '[a-z_]\\w*!?',
-	    contains: [
-	      {
-	        className: 'literal',
-	        begin: '\\[(\\|\\|)?\\]|\\(\\)',
-	        relevance: 0
-	      },
-	      hljs.COMMENT(
-	        '\\(\\*',
-	        '\\*\\)',
-	        {
-	          contains: ['self']
-	        }
-	      ),
-	      { /* type variable */
-	        className: 'symbol',
-	        begin: '\'[A-Za-z_](?!\')[\\w\']*'
-	        /* the grammar is ambiguous on how 'a'b should be interpreted but not the compiler */
-	      },
-	      { /* polymorphic variant */
-	        className: 'type',
-	        begin: '`[A-Z][\\w\']*'
-	      },
-	      { /* module or constructor */
-	        className: 'type',
-	        begin: '\\b[A-Z][\\w\']*',
-	        relevance: 0
-	      },
-	      { /* don't color identifiers, but safely catch all identifiers with '*/
-	        begin: '[a-z_]\\w*\'[\\w\']*', relevance: 0
-	      },
-	      hljs.inherit(hljs.APOS_STRING_MODE, {className: 'string', relevance: 0}),
-	      hljs.inherit(hljs.QUOTE_STRING_MODE, {illegal: null}),
-	      {
-	        className: 'number',
-	        begin:
-	          '\\b(0[xX][a-fA-F0-9_]+[Lln]?|' +
-	          '0[oO][0-7_]+[Lln]?|' +
-	          '0[bB][01_]+[Lln]?|' +
-	          '[0-9][0-9_]*([Lln]|(\\.[0-9_]*)?([eE][-+]?[0-9_]+)?)?)',
-	        relevance: 0
-	      },
-	      {
-	        begin: /[-=]>/ // relevance booster
-	      }
-	    ]
-	  }
-	};
-
-/***/ },
-/* 349 */
-/***/ function(module, exports) {
-
-	module.exports = function(hljs) {
-		var SPECIAL_VARS = {
-			className: 'keyword',
-			begin: '\\$(f[asn]|t|vp[rtd]|children)'
-		},
-		LITERALS = {
-			className: 'literal',
-			begin: 'false|true|PI|undef'
-		},
-		NUMBERS = {
-			className: 'number',
-			begin: '\\b\\d+(\\.\\d+)?(e-?\\d+)?', //adds 1e5, 1e-10
-			relevance: 0
-		},
-		STRING = hljs.inherit(hljs.QUOTE_STRING_MODE,{illegal: null}),
-		PREPRO = {
-			className: 'meta',
-			keywords: {'meta-keyword': 'include use'},
-			begin: 'include|use <',
-			end: '>'
-		},
-		PARAMS = {
-			className: 'params',
-			begin: '\\(', end: '\\)',
-			contains: ['self', NUMBERS, STRING, SPECIAL_VARS, LITERALS]
-		},
-		MODIFIERS = {
-			begin: '[*!#%]',
-			relevance: 0
-		},
-		FUNCTIONS = {
-			className: 'function',
-			beginKeywords: 'module function',
-			end: '\\=|\\{',
-			contains: [PARAMS, hljs.UNDERSCORE_TITLE_MODE]
-		};
-	
-		return {
-			aliases: ['scad'],
-			keywords: {
-				keyword: 'function module include use for intersection_for if else \\%',
-				literal: 'false true PI undef',
-				built_in: 'circle square polygon text sphere cube cylinder polyhedron translate rotate scale resize mirror multmatrix color offset hull minkowski union difference intersection abs sign sin cos tan acos asin atan atan2 floor round ceil ln log pow sqrt exp rands min max concat lookup str chr search version version_num norm cross parent_module echo import import_dxf dxf_linear_extrude linear_extrude rotate_extrude surface projection render children dxf_cross dxf_dim let assign'
-			},
-			contains: [
-				hljs.C_LINE_COMMENT_MODE,
-				hljs.C_BLOCK_COMMENT_MODE,
-				NUMBERS,
-				PREPRO,
-				STRING,
-				SPECIAL_VARS,
-				MODIFIERS,
-				FUNCTIONS
-			]
-		}
-	};
-
-/***/ },
-/* 350 */
-/***/ function(module, exports) {
-
-	module.exports = function(hljs) {
-	  var OXYGENE_KEYWORDS = 'abstract add and array as asc aspect assembly async begin break block by case class concat const copy constructor continue '+
-	    'create default delegate desc distinct div do downto dynamic each else empty end ensure enum equals event except exit extension external false '+
-	    'final finalize finalizer finally flags for forward from function future global group has if implementation implements implies in index inherited '+
-	    'inline interface into invariants is iterator join locked locking loop matching method mod module namespace nested new nil not notify nullable of '+
-	    'old on operator or order out override parallel params partial pinned private procedure property protected public queryable raise read readonly '+
-	    'record reintroduce remove repeat require result reverse sealed select self sequence set shl shr skip static step soft take then to true try tuple '+
-	    'type union unit unsafe until uses using var virtual raises volatile where while with write xor yield await mapped deprecated stdcall cdecl pascal '+
-	    'register safecall overload library platform reference packed strict published autoreleasepool selector strong weak unretained';
-	  var CURLY_COMMENT =  hljs.COMMENT(
-	    '{',
-	    '}',
-	    {
-	      relevance: 0
-	    }
-	  );
-	  var PAREN_COMMENT = hljs.COMMENT(
-	    '\\(\\*',
-	    '\\*\\)',
-	    {
-	      relevance: 10
-	    }
-	  );
-	  var STRING = {
-	    className: 'string',
-	    begin: '\'', end: '\'',
-	    contains: [{begin: '\'\''}]
-	  };
-	  var CHAR_STRING = {
-	    className: 'string', begin: '(#\\d+)+'
-	  };
-	  var FUNCTION = {
-	    className: 'function',
-	    beginKeywords: 'function constructor destructor procedure method', end: '[:;]',
-	    keywords: 'function constructor|10 destructor|10 procedure|10 method|10',
-	    contains: [
-	      hljs.TITLE_MODE,
-	      {
-	        className: 'params',
-	        begin: '\\(', end: '\\)',
-	        keywords: OXYGENE_KEYWORDS,
-	        contains: [STRING, CHAR_STRING]
-	      },
-	      CURLY_COMMENT, PAREN_COMMENT
-	    ]
-	  };
-	  return {
-	    case_insensitive: true,
-	    keywords: OXYGENE_KEYWORDS,
-	    illegal: '("|\\$[G-Zg-z]|\\/\\*|</|=>|->)',
-	    contains: [
-	      CURLY_COMMENT, PAREN_COMMENT, hljs.C_LINE_COMMENT_MODE,
-	      STRING, CHAR_STRING,
-	      hljs.NUMBER_MODE,
-	      FUNCTION,
-	      {
-	        className: 'class',
-	        begin: '=\\bclass\\b', end: 'end;',
-	        keywords: OXYGENE_KEYWORDS,
-	        contains: [
-	          STRING, CHAR_STRING,
-	          CURLY_COMMENT, PAREN_COMMENT, hljs.C_LINE_COMMENT_MODE,
-	          FUNCTION
-	        ]
-	      }
-	    ]
-	  };
-	};
-
-/***/ },
-/* 351 */
-/***/ function(module, exports) {
-
-	module.exports = function(hljs) {
-	  var CURLY_SUBCOMMENT = hljs.COMMENT(
-	    '{',
-	    '}',
-	    {
-	      contains: ['self']
-	    }
-	  );
-	  return {
-	    subLanguage: 'xml', relevance: 0,
-	    contains: [
-	      hljs.COMMENT('^#', '$'),
-	      hljs.COMMENT(
-	        '\\^rem{',
-	        '}',
-	        {
-	          relevance: 10,
-	          contains: [
-	            CURLY_SUBCOMMENT
-	          ]
-	        }
-	      ),
-	      {
-	        className: 'meta',
-	        begin: '^@(?:BASE|USE|CLASS|OPTIONS)$',
-	        relevance: 10
-	      },
-	      {
-	        className: 'title',
-	        begin: '@[\\w\\-]+\\[[\\w^;\\-]*\\](?:\\[[\\w^;\\-]*\\])?(?:.*)$'
-	      },
-	      {
-	        className: 'variable',
-	        begin: '\\$\\{?[\\w\\-\\.\\:]+\\}?'
-	      },
-	      {
-	        className: 'keyword',
-	        begin: '\\^[\\w\\-\\.\\:]+'
-	      },
-	      {
-	        className: 'number',
-	        begin: '\\^#[0-9a-fA-F]+'
-	      },
-	      hljs.C_NUMBER_MODE
-	    ]
-	  };
-	};
-
-/***/ },
-/* 352 */
+/* 276 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41010,14 +33409,766 @@
 	  METHOD.contains = PERL_DEFAULT_CONTAINS;
 	
 	  return {
-	    aliases: ['pl'],
+	    aliases: ['pl', 'pm'],
+	    lexemes: /[\w\.]+/,
 	    keywords: PERL_KEYWORDS,
 	    contains: PERL_DEFAULT_CONTAINS
 	  };
 	};
 
 /***/ },
-/* 353 */
+/* 277 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  return {
+	    subLanguage: 'xml',
+	    contains: [
+	      {
+	        className: 'meta',
+	        begin: '^__(END|DATA)__$'
+	      },
+	    // mojolicious line
+	      {
+	        begin: "^\\s*%{1,2}={0,2}", end: '$',
+	        subLanguage: 'perl'
+	      },
+	    // mojolicious block
+	      {
+	        begin: "<%{1,2}={0,2}",
+	        end: "={0,1}%>",
+	        subLanguage: 'perl',
+	        excludeBegin: true,
+	        excludeEnd: true
+	      }
+	    ]
+	  };
+	};
+
+/***/ },
+/* 278 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var NUMBER = {
+	    className: 'number', relevance: 0,
+	    variants: [
+	      {
+	        begin: '[$][a-fA-F0-9]+'
+	      },
+	      hljs.NUMBER_MODE
+	    ]
+	  };
+	
+	  return {
+	    case_insensitive: true,
+	    keywords: {
+	      keyword: 'public private property continue exit extern new try catch ' +
+	        'eachin not abstract final select case default const local global field ' +
+	        'end if then else elseif endif while wend repeat until forever for ' +
+	        'to step next return module inline throw import',
+	
+	      built_in: 'DebugLog DebugStop Error Print ACos ACosr ASin ASinr ATan ATan2 ATan2r ATanr Abs Abs Ceil ' +
+	        'Clamp Clamp Cos Cosr Exp Floor Log Max Max Min Min Pow Sgn Sgn Sin Sinr Sqrt Tan Tanr Seed PI HALFPI TWOPI',
+	
+	      literal: 'true false null and or shl shr mod'
+	    },
+	    illegal: /\/\*/,
+	    contains: [
+	      hljs.COMMENT('#rem', '#end'),
+	      hljs.COMMENT(
+	        "'",
+	        '$',
+	        {
+	          relevance: 0
+	        }
+	      ),
+	      {
+	        className: 'function',
+	        beginKeywords: 'function method', end: '[(=:]|$',
+	        illegal: /\n/,
+	        contains: [
+	          hljs.UNDERSCORE_TITLE_MODE
+	        ]
+	      },
+	      {
+	        className: 'class',
+	        beginKeywords: 'class interface', end: '$',
+	        contains: [
+	          {
+	            beginKeywords: 'extends implements'
+	          },
+	          hljs.UNDERSCORE_TITLE_MODE
+	        ]
+	      },
+	      {
+	        className: 'built_in',
+	        begin: '\\b(self|super)\\b'
+	      },
+	      {
+	        className: 'meta',
+	        begin: '\\s*#', end: '$',
+	        keywords: {'meta-keyword': 'if else elseif endif end then'}
+	      },
+	      {
+	        className: 'meta',
+	        begin: '^\\s*strict\\b'
+	      },
+	      {
+	        beginKeywords: 'alias', end: '=',
+	        contains: [hljs.UNDERSCORE_TITLE_MODE]
+	      },
+	      hljs.QUOTE_STRING_MODE,
+	      NUMBER
+	    ]
+	  }
+	};
+
+/***/ },
+/* 279 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var VAR = {
+	    className: 'variable',
+	    variants: [
+	      {begin: /\$\d+/},
+	      {begin: /\$\{/, end: /}/},
+	      {begin: '[\\$\\@]' + hljs.UNDERSCORE_IDENT_RE}
+	    ]
+	  };
+	  var DEFAULT = {
+	    endsWithParent: true,
+	    lexemes: '[a-z/_]+',
+	    keywords: {
+	      literal:
+	        'on off yes no true false none blocked debug info notice warn error crit ' +
+	        'select break last permanent redirect kqueue rtsig epoll poll /dev/poll'
+	    },
+	    relevance: 0,
+	    illegal: '=>',
+	    contains: [
+	      hljs.HASH_COMMENT_MODE,
+	      {
+	        className: 'string',
+	        contains: [hljs.BACKSLASH_ESCAPE, VAR],
+	        variants: [
+	          {begin: /"/, end: /"/},
+	          {begin: /'/, end: /'/}
+	        ]
+	      },
+	      // this swallows entire URLs to avoid detecting numbers within
+	      {
+	        begin: '([a-z]+):/', end: '\\s', endsWithParent: true, excludeEnd: true,
+	        contains: [VAR]
+	      },
+	      {
+	        className: 'regexp',
+	        contains: [hljs.BACKSLASH_ESCAPE, VAR],
+	        variants: [
+	          {begin: "\\s\\^", end: "\\s|{|;", returnEnd: true},
+	          // regexp locations (~, ~*)
+	          {begin: "~\\*?\\s+", end: "\\s|{|;", returnEnd: true},
+	          // *.example.com
+	          {begin: "\\*(\\.[a-z\\-]+)+"},
+	          // sub.example.*
+	          {begin: "([a-z\\-]+\\.)+\\*"}
+	        ]
+	      },
+	      // IP
+	      {
+	        className: 'number',
+	        begin: '\\b\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}(:\\d{1,5})?\\b'
+	      },
+	      // units
+	      {
+	        className: 'number',
+	        begin: '\\b\\d+[kKmMgGdshdwy]*\\b',
+	        relevance: 0
+	      },
+	      VAR
+	    ]
+	  };
+	
+	  return {
+	    aliases: ['nginxconf'],
+	    contains: [
+	      hljs.HASH_COMMENT_MODE,
+	      {
+	        begin: hljs.UNDERSCORE_IDENT_RE + '\\s+{', returnBegin: true,
+	        end: '{',
+	        contains: [
+	          {
+	            className: 'section',
+	            begin: hljs.UNDERSCORE_IDENT_RE
+	          }
+	        ],
+	        relevance: 0
+	      },
+	      {
+	        begin: hljs.UNDERSCORE_IDENT_RE + '\\s', end: ';|{', returnBegin: true,
+	        contains: [
+	          {
+	            className: 'attribute',
+	            begin: hljs.UNDERSCORE_IDENT_RE,
+	            starts: DEFAULT
+	          }
+	        ],
+	        relevance: 0
+	      }
+	    ],
+	    illegal: '[^\\s\\}]'
+	  };
+	};
+
+/***/ },
+/* 280 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  return {
+	    aliases: ['nim'],
+	    keywords: {
+	      keyword:
+	        'addr and as asm bind block break case cast const continue converter ' +
+	        'discard distinct div do elif else end enum except export finally ' +
+	        'for from generic if import in include interface is isnot iterator ' +
+	        'let macro method mixin mod nil not notin object of or out proc ptr ' +
+	        'raise ref return shl shr static template try tuple type using var ' +
+	        'when while with without xor yield',
+	      literal:
+	        'shared guarded stdin stdout stderr result true false',
+	      built_in:
+	        'int int8 int16 int32 int64 uint uint8 uint16 uint32 uint64 float ' +
+	        'float32 float64 bool char string cstring pointer expr stmt void ' +
+	        'auto any range array openarray varargs seq set clong culong cchar ' +
+	        'cschar cshort cint csize clonglong cfloat cdouble clongdouble ' +
+	        'cuchar cushort cuint culonglong cstringarray semistatic'
+	    },
+	    contains: [ {
+	        className: 'meta', // Actually pragma
+	        begin: /{\./,
+	        end: /\.}/,
+	        relevance: 10
+	      }, {
+	        className: 'string',
+	        begin: /[a-zA-Z]\w*"/,
+	        end: /"/,
+	        contains: [{begin: /""/}]
+	      }, {
+	        className: 'string',
+	        begin: /([a-zA-Z]\w*)?"""/,
+	        end: /"""/
+	      },
+	      hljs.QUOTE_STRING_MODE,
+	      {
+	        className: 'type',
+	        begin: /\b[A-Z]\w+\b/,
+	        relevance: 0
+	      }, {
+	        className: 'number',
+	        relevance: 0,
+	        variants: [
+	          {begin: /\b(0[xX][0-9a-fA-F][_0-9a-fA-F]*)('?[iIuU](8|16|32|64))?/},
+	          {begin: /\b(0o[0-7][_0-7]*)('?[iIuUfF](8|16|32|64))?/},
+	          {begin: /\b(0(b|B)[01][_01]*)('?[iIuUfF](8|16|32|64))?/},
+	          {begin: /\b(\d[_\d]*)('?[iIuUfF](8|16|32|64))?/}
+	        ]
+	      },
+	      hljs.HASH_COMMENT_MODE
+	    ]
+	  }
+	};
+
+/***/ },
+/* 281 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var NIX_KEYWORDS = {
+	    keyword:
+	      'rec with let in inherit assert if else then',
+	    literal:
+	      'true false or and null',
+	    built_in:
+	      'import abort baseNameOf dirOf isNull builtins map removeAttrs throw ' +
+	      'toString derivation'
+	  };
+	  var ANTIQUOTE = {
+	    className: 'subst',
+	    begin: /\$\{/,
+	    end: /}/,
+	    keywords: NIX_KEYWORDS
+	  };
+	  var ATTRS = {
+	    begin: /[a-zA-Z0-9-_]+(\s*=)/, returnBegin: true,
+	    relevance: 0,
+	    contains: [
+	      {
+	        className: 'attr',
+	        begin: /\S+/
+	      }
+	    ]
+	  };
+	  var STRING = {
+	    className: 'string',
+	    contains: [ANTIQUOTE],
+	    variants: [
+	      {begin: "''", end: "''"},
+	      {begin: '"', end: '"'}
+	    ]
+	  };
+	  var EXPRESSIONS = [
+	    hljs.NUMBER_MODE,
+	    hljs.HASH_COMMENT_MODE,
+	    hljs.C_BLOCK_COMMENT_MODE,
+	    STRING,
+	    ATTRS
+	  ];
+	  ANTIQUOTE.contains = EXPRESSIONS;
+	  return {
+	    aliases: ["nixos"],
+	    keywords: NIX_KEYWORDS,
+	    contains: EXPRESSIONS
+	  };
+	};
+
+/***/ },
+/* 282 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var CONSTANTS = {
+	    className: 'variable',
+	    begin: '\\$(ADMINTOOLS|APPDATA|CDBURN_AREA|CMDLINE|COMMONFILES32|COMMONFILES64|COMMONFILES|COOKIES|DESKTOP|DOCUMENTS|EXEDIR|EXEFILE|EXEPATH|FAVORITES|FONTS|HISTORY|HWNDPARENT|INSTDIR|INTERNET_CACHE|LANGUAGE|LOCALAPPDATA|MUSIC|NETHOOD|OUTDIR|PICTURES|PLUGINSDIR|PRINTHOOD|PROFILE|PROGRAMFILES32|PROGRAMFILES64|PROGRAMFILES|QUICKLAUNCH|RECENT|RESOURCES_LOCALIZED|RESOURCES|SENDTO|SMPROGRAMS|SMSTARTUP|STARTMENU|SYSDIR|TEMP|TEMPLATES|VIDEOS|WINDIR)'
+	  };
+	
+	  var DEFINES = {
+	    // ${defines}
+	    className: 'variable',
+	    begin: '\\$+{[a-zA-Z0-9_]+}'
+	  };
+	
+	  var VARIABLES = {
+	    // $variables
+	    className: 'variable',
+	    begin: '\\$+[a-zA-Z0-9_]+',
+	    illegal: '\\(\\){}'
+	  };
+	
+	  var LANGUAGES = {
+	    // $(language_strings)
+	    className: 'variable',
+	    begin: '\\$+\\([a-zA-Z0-9_]+\\)'
+	  };
+	
+	  var PARAMETERS = {
+	    // command parameters
+	    className: 'built_in',
+	    begin: '(ARCHIVE|FILE_ATTRIBUTE_ARCHIVE|FILE_ATTRIBUTE_NORMAL|FILE_ATTRIBUTE_OFFLINE|FILE_ATTRIBUTE_READONLY|FILE_ATTRIBUTE_SYSTEM|FILE_ATTRIBUTE_TEMPORARY|HKCR|HKCU|HKDD|HKEY_CLASSES_ROOT|HKEY_CURRENT_CONFIG|HKEY_CURRENT_USER|HKEY_DYN_DATA|HKEY_LOCAL_MACHINE|HKEY_PERFORMANCE_DATA|HKEY_USERS|HKLM|HKPD|HKU|IDABORT|IDCANCEL|IDIGNORE|IDNO|IDOK|IDRETRY|IDYES|MB_ABORTRETRYIGNORE|MB_DEFBUTTON1|MB_DEFBUTTON2|MB_DEFBUTTON3|MB_DEFBUTTON4|MB_ICONEXCLAMATION|MB_ICONINFORMATION|MB_ICONQUESTION|MB_ICONSTOP|MB_OK|MB_OKCANCEL|MB_RETRYCANCEL|MB_RIGHT|MB_RTLREADING|MB_SETFOREGROUND|MB_TOPMOST|MB_USERICON|MB_YESNO|NORMAL|OFFLINE|READONLY|SHCTX|SHELL_CONTEXT|SYSTEM|TEMPORARY)'
+	  };
+	
+	  var COMPILER ={
+	    // !compiler_flags
+	    className: 'keyword',
+	    begin: '\\!(addincludedir|addplugindir|appendfile|cd|define|delfile|echo|else|endif|error|execute|finalize|getdllversionsystem|ifdef|ifmacrodef|ifmacrondef|ifndef|if|include|insertmacro|macroend|macro|makensis|packhdr|searchparse|searchreplace|tempfile|undef|verbose|warning)'
+	  };
+	
+	  return {
+	    case_insensitive: false,
+	    keywords: {
+	      keyword:
+	      'Abort AddBrandingImage AddSize AllowRootDirInstall AllowSkipFiles AutoCloseWindow BGFont BGGradient BrandingText BringToFront Call CallInstDLL Caption ChangeUI CheckBitmap ClearErrors CompletedText ComponentText CopyFiles CRCCheck CreateDirectory CreateFont CreateShortCut Delete DeleteINISec DeleteINIStr DeleteRegKey DeleteRegValue DetailPrint DetailsButtonText DirText DirVar DirVerify EnableWindow EnumRegKey EnumRegValue Exch Exec ExecShell ExecWait ExpandEnvStrings File FileBufSize FileClose FileErrorText FileOpen FileRead FileReadByte FileReadUTF16LE FileReadWord FileSeek FileWrite FileWriteByte FileWriteUTF16LE FileWriteWord FindClose FindFirst FindNext FindWindow FlushINI FunctionEnd GetCurInstType GetCurrentAddress GetDlgItem GetDLLVersion GetDLLVersionLocal GetErrorLevel GetFileTime GetFileTimeLocal GetFullPathName GetFunctionAddress GetInstDirError GetLabelAddress GetTempFileName Goto HideWindow Icon IfAbort IfErrors IfFileExists IfRebootFlag IfSilent InitPluginsDir InstallButtonText InstallColors InstallDir InstallDirRegKey InstProgressFlags InstType InstTypeGetText InstTypeSetText IntCmp IntCmpU IntFmt IntOp IsWindow LangString LicenseBkColor LicenseData LicenseForceSelection LicenseLangString LicenseText LoadLanguageFile LockWindow LogSet LogText ManifestDPIAware ManifestSupportedOS MessageBox MiscButtonText Name Nop OutFile Page PageCallbacks PageExEnd Pop Push Quit ReadEnvStr ReadINIStr ReadRegDWORD ReadRegStr Reboot RegDLL Rename RequestExecutionLevel ReserveFile Return RMDir SearchPath SectionEnd SectionGetFlags SectionGetInstTypes SectionGetSize SectionGetText SectionGroupEnd SectionIn SectionSetFlags SectionSetInstTypes SectionSetSize SectionSetText SendMessage SetAutoClose SetBrandingImage SetCompress SetCompressor SetCompressorDictSize SetCtlColors SetCurInstType SetDatablockOptimize SetDateSave SetDetailsPrint SetDetailsView SetErrorLevel SetErrors SetFileAttributes SetFont SetOutPath SetOverwrite SetPluginUnload SetRebootFlag SetRegView SetShellVarContext SetSilent ShowInstDetails ShowUninstDetails ShowWindow SilentInstall SilentUnInstall Sleep SpaceTexts StrCmp StrCmpS StrCpy StrLen SubCaption SubSectionEnd Unicode UninstallButtonText UninstallCaption UninstallIcon UninstallSubCaption UninstallText UninstPage UnRegDLL Var VIAddVersionKey VIFileVersion VIProductVersion WindowIcon WriteINIStr WriteRegBin WriteRegDWORD WriteRegExpandStr WriteRegStr WriteUninstaller XPStyle',
+	      literal:
+	      'admin all auto both colored current false force hide highest lastused leave listonly none normal notset off on open print show silent silentlog smooth textonly true user '
+	    },
+	    contains: [
+	      hljs.HASH_COMMENT_MODE,
+	      hljs.C_BLOCK_COMMENT_MODE,
+	      {
+	        className: 'string',
+	        begin: '"', end: '"',
+	        illegal: '\\n',
+	        contains: [
+	          { // $\n, $\r, $\t, $$
+	            begin: '\\$(\\\\(n|r|t)|\\$)'
+	          },
+	          CONSTANTS,
+	          DEFINES,
+	          VARIABLES,
+	          LANGUAGES
+	        ]
+	      },
+	      hljs.COMMENT(
+	        ';',
+	        '$',
+	        {
+	          relevance: 0
+	        }
+	      ),
+	      {
+	        className: 'function',
+	        beginKeywords: 'Function PageEx Section SectionGroup SubSection', end: '$'
+	      },
+	      COMPILER,
+	      DEFINES,
+	      VARIABLES,
+	      LANGUAGES,
+	      PARAMETERS,
+	      hljs.NUMBER_MODE,
+	      { // plug::ins
+	        begin: hljs.IDENT_RE + '::' + hljs.IDENT_RE
+	      }
+	    ]
+	  };
+	};
+
+/***/ },
+/* 283 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var API_CLASS = {
+	    className: 'built_in',
+	    begin: '(AV|CA|CF|CG|CI|MK|MP|NS|UI|XC)\\w+',
+	  };
+	  var OBJC_KEYWORDS = {
+	    keyword:
+	      'int float while char export sizeof typedef const struct for union ' +
+	      'unsigned long volatile static bool mutable if do return goto void ' +
+	      'enum else break extern asm case short default double register explicit ' +
+	      'signed typename this switch continue wchar_t inline readonly assign ' +
+	      'readwrite self @synchronized id typeof ' +
+	      'nonatomic super unichar IBOutlet IBAction strong weak copy ' +
+	      'in out inout bycopy byref oneway __strong __weak __block __autoreleasing ' +
+	      '@private @protected @public @try @property @end @throw @catch @finally ' +
+	      '@autoreleasepool @synthesize @dynamic @selector @optional @required',
+	    literal:
+	      'false true FALSE TRUE nil YES NO NULL',
+	    built_in:
+	      'BOOL dispatch_once_t dispatch_queue_t dispatch_sync dispatch_async dispatch_once'
+	  };
+	  var LEXEMES = /[a-zA-Z@][a-zA-Z0-9_]*/;
+	  var CLASS_KEYWORDS = '@interface @class @protocol @implementation';
+	  return {
+	    aliases: ['mm', 'objc', 'obj-c'],
+	    keywords: OBJC_KEYWORDS,
+	    lexemes: LEXEMES,
+	    illegal: '</',
+	    contains: [
+	      API_CLASS,
+	      hljs.C_LINE_COMMENT_MODE,
+	      hljs.C_BLOCK_COMMENT_MODE,
+	      hljs.C_NUMBER_MODE,
+	      hljs.QUOTE_STRING_MODE,
+	      {
+	        className: 'string',
+	        variants: [
+	          {
+	            begin: '@"', end: '"',
+	            illegal: '\\n',
+	            contains: [hljs.BACKSLASH_ESCAPE]
+	          },
+	          {
+	            begin: '\'', end: '[^\\\\]\'',
+	            illegal: '[^\\\\][^\']'
+	          }
+	        ]
+	      },
+	      {
+	        className: 'meta',
+	        begin: '#',
+	        end: '$',
+	        contains: [
+	          {
+	            className: 'meta-string',
+	            variants: [
+	              { begin: '\"', end: '\"' },
+	              { begin: '<', end: '>' }
+	            ]
+	          }
+	        ]
+	      },
+	      {
+	        className: 'class',
+	        begin: '(' + CLASS_KEYWORDS.split(' ').join('|') + ')\\b', end: '({|$)', excludeEnd: true,
+	        keywords: CLASS_KEYWORDS, lexemes: LEXEMES,
+	        contains: [
+	          hljs.UNDERSCORE_TITLE_MODE
+	        ]
+	      },
+	      {
+	        begin: '\\.'+hljs.UNDERSCORE_IDENT_RE,
+	        relevance: 0
+	      }
+	    ]
+	  };
+	};
+
+/***/ },
+/* 284 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  /* missing support for heredoc-like string (OCaml 4.0.2+) */
+	  return {
+	    aliases: ['ml'],
+	    keywords: {
+	      keyword:
+	        'and as assert asr begin class constraint do done downto else end ' +
+	        'exception external for fun function functor if in include ' +
+	        'inherit! inherit initializer land lazy let lor lsl lsr lxor match method!|10 method ' +
+	        'mod module mutable new object of open! open or private rec sig struct ' +
+	        'then to try type val! val virtual when while with ' +
+	        /* camlp4 */
+	        'parser value',
+	      built_in:
+	        /* built-in types */
+	        'array bool bytes char exn|5 float int int32 int64 list lazy_t|5 nativeint|5 string unit ' +
+	        /* (some) types in Pervasives */
+	        'in_channel out_channel ref',
+	      literal:
+	        'true false'
+	    },
+	    illegal: /\/\/|>>/,
+	    lexemes: '[a-z_]\\w*!?',
+	    contains: [
+	      {
+	        className: 'literal',
+	        begin: '\\[(\\|\\|)?\\]|\\(\\)',
+	        relevance: 0
+	      },
+	      hljs.COMMENT(
+	        '\\(\\*',
+	        '\\*\\)',
+	        {
+	          contains: ['self']
+	        }
+	      ),
+	      { /* type variable */
+	        className: 'symbol',
+	        begin: '\'[A-Za-z_](?!\')[\\w\']*'
+	        /* the grammar is ambiguous on how 'a'b should be interpreted but not the compiler */
+	      },
+	      { /* polymorphic variant */
+	        className: 'type',
+	        begin: '`[A-Z][\\w\']*'
+	      },
+	      { /* module or constructor */
+	        className: 'type',
+	        begin: '\\b[A-Z][\\w\']*',
+	        relevance: 0
+	      },
+	      { /* don't color identifiers, but safely catch all identifiers with '*/
+	        begin: '[a-z_]\\w*\'[\\w\']*', relevance: 0
+	      },
+	      hljs.inherit(hljs.APOS_STRING_MODE, {className: 'string', relevance: 0}),
+	      hljs.inherit(hljs.QUOTE_STRING_MODE, {illegal: null}),
+	      {
+	        className: 'number',
+	        begin:
+	          '\\b(0[xX][a-fA-F0-9_]+[Lln]?|' +
+	          '0[oO][0-7_]+[Lln]?|' +
+	          '0[bB][01_]+[Lln]?|' +
+	          '[0-9][0-9_]*([Lln]|(\\.[0-9_]*)?([eE][-+]?[0-9_]+)?)?)',
+	        relevance: 0
+	      },
+	      {
+	        begin: /[-=]>/ // relevance booster
+	      }
+	    ]
+	  }
+	};
+
+/***/ },
+/* 285 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+		var SPECIAL_VARS = {
+			className: 'keyword',
+			begin: '\\$(f[asn]|t|vp[rtd]|children)'
+		},
+		LITERALS = {
+			className: 'literal',
+			begin: 'false|true|PI|undef'
+		},
+		NUMBERS = {
+			className: 'number',
+			begin: '\\b\\d+(\\.\\d+)?(e-?\\d+)?', //adds 1e5, 1e-10
+			relevance: 0
+		},
+		STRING = hljs.inherit(hljs.QUOTE_STRING_MODE,{illegal: null}),
+		PREPRO = {
+			className: 'meta',
+			keywords: {'meta-keyword': 'include use'},
+			begin: 'include|use <',
+			end: '>'
+		},
+		PARAMS = {
+			className: 'params',
+			begin: '\\(', end: '\\)',
+			contains: ['self', NUMBERS, STRING, SPECIAL_VARS, LITERALS]
+		},
+		MODIFIERS = {
+			begin: '[*!#%]',
+			relevance: 0
+		},
+		FUNCTIONS = {
+			className: 'function',
+			beginKeywords: 'module function',
+			end: '\\=|\\{',
+			contains: [PARAMS, hljs.UNDERSCORE_TITLE_MODE]
+		};
+	
+		return {
+			aliases: ['scad'],
+			keywords: {
+				keyword: 'function module include use for intersection_for if else \\%',
+				literal: 'false true PI undef',
+				built_in: 'circle square polygon text sphere cube cylinder polyhedron translate rotate scale resize mirror multmatrix color offset hull minkowski union difference intersection abs sign sin cos tan acos asin atan atan2 floor round ceil ln log pow sqrt exp rands min max concat lookup str chr search version version_num norm cross parent_module echo import import_dxf dxf_linear_extrude linear_extrude rotate_extrude surface projection render children dxf_cross dxf_dim let assign'
+			},
+			contains: [
+				hljs.C_LINE_COMMENT_MODE,
+				hljs.C_BLOCK_COMMENT_MODE,
+				NUMBERS,
+				PREPRO,
+				STRING,
+				SPECIAL_VARS,
+				MODIFIERS,
+				FUNCTIONS
+			]
+		}
+	};
+
+/***/ },
+/* 286 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var OXYGENE_KEYWORDS = 'abstract add and array as asc aspect assembly async begin break block by case class concat const copy constructor continue '+
+	    'create default delegate desc distinct div do downto dynamic each else empty end ensure enum equals event except exit extension external false '+
+	    'final finalize finalizer finally flags for forward from function future global group has if implementation implements implies in index inherited '+
+	    'inline interface into invariants is iterator join locked locking loop matching method mod module namespace nested new nil not notify nullable of '+
+	    'old on operator or order out override parallel params partial pinned private procedure property protected public queryable raise read readonly '+
+	    'record reintroduce remove repeat require result reverse sealed select self sequence set shl shr skip static step soft take then to true try tuple '+
+	    'type union unit unsafe until uses using var virtual raises volatile where while with write xor yield await mapped deprecated stdcall cdecl pascal '+
+	    'register safecall overload library platform reference packed strict published autoreleasepool selector strong weak unretained';
+	  var CURLY_COMMENT =  hljs.COMMENT(
+	    '{',
+	    '}',
+	    {
+	      relevance: 0
+	    }
+	  );
+	  var PAREN_COMMENT = hljs.COMMENT(
+	    '\\(\\*',
+	    '\\*\\)',
+	    {
+	      relevance: 10
+	    }
+	  );
+	  var STRING = {
+	    className: 'string',
+	    begin: '\'', end: '\'',
+	    contains: [{begin: '\'\''}]
+	  };
+	  var CHAR_STRING = {
+	    className: 'string', begin: '(#\\d+)+'
+	  };
+	  var FUNCTION = {
+	    className: 'function',
+	    beginKeywords: 'function constructor destructor procedure method', end: '[:;]',
+	    keywords: 'function constructor|10 destructor|10 procedure|10 method|10',
+	    contains: [
+	      hljs.TITLE_MODE,
+	      {
+	        className: 'params',
+	        begin: '\\(', end: '\\)',
+	        keywords: OXYGENE_KEYWORDS,
+	        contains: [STRING, CHAR_STRING]
+	      },
+	      CURLY_COMMENT, PAREN_COMMENT
+	    ]
+	  };
+	  return {
+	    case_insensitive: true,
+	    lexemes: /\.?\w+/,
+	    keywords: OXYGENE_KEYWORDS,
+	    illegal: '("|\\$[G-Zg-z]|\\/\\*|</|=>|->)',
+	    contains: [
+	      CURLY_COMMENT, PAREN_COMMENT, hljs.C_LINE_COMMENT_MODE,
+	      STRING, CHAR_STRING,
+	      hljs.NUMBER_MODE,
+	      FUNCTION,
+	      {
+	        className: 'class',
+	        begin: '=\\bclass\\b', end: 'end;',
+	        keywords: OXYGENE_KEYWORDS,
+	        contains: [
+	          STRING, CHAR_STRING,
+	          CURLY_COMMENT, PAREN_COMMENT, hljs.C_LINE_COMMENT_MODE,
+	          FUNCTION
+	        ]
+	      }
+	    ]
+	  };
+	};
+
+/***/ },
+/* 287 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var CURLY_SUBCOMMENT = hljs.COMMENT(
+	    '{',
+	    '}',
+	    {
+	      contains: ['self']
+	    }
+	  );
+	  return {
+	    subLanguage: 'xml', relevance: 0,
+	    contains: [
+	      hljs.COMMENT('^#', '$'),
+	      hljs.COMMENT(
+	        '\\^rem{',
+	        '}',
+	        {
+	          relevance: 10,
+	          contains: [
+	            CURLY_SUBCOMMENT
+	          ]
+	        }
+	      ),
+	      {
+	        className: 'meta',
+	        begin: '^@(?:BASE|USE|CLASS|OPTIONS)$',
+	        relevance: 10
+	      },
+	      {
+	        className: 'title',
+	        begin: '@[\\w\\-]+\\[[\\w^;\\-]*\\](?:\\[[\\w^;\\-]*\\])?(?:.*)$'
+	      },
+	      {
+	        className: 'variable',
+	        begin: '\\$\\{?[\\w\\-\\.\\:]+\\}?'
+	      },
+	      {
+	        className: 'keyword',
+	        begin: '\\^[\\w\\-\\.\\:]+'
+	      },
+	      {
+	        className: 'number',
+	        begin: '\\^#[0-9a-fA-F]+'
+	      },
+	      hljs.C_NUMBER_MODE
+	    ]
+	  };
+	};
+
+/***/ },
+/* 288 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41027,7 +34178,7 @@
 	  };
 	  var TABLE = {
 	    className: 'variable',
-	    begin: /</, end: />/
+	    begin: /<(?!\/)/, end: />/
 	  };
 	  var QUOTE_STRING = {
 	    className: 'string',
@@ -41073,7 +34224,7 @@
 	};
 
 /***/ },
-/* 354 */
+/* 289 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41111,8 +34262,8 @@
 	      'trait goto instanceof insteadof __DIR__ __NAMESPACE__ ' +
 	      'yield finally',
 	    contains: [
-	      hljs.C_LINE_COMMENT_MODE,
 	      hljs.HASH_COMMENT_MODE,
+	      hljs.COMMENT('//', '$', {contains: [PREPROCESSOR]}),
 	      hljs.COMMENT(
 	        '/\\*',
 	        '\\*/',
@@ -41121,8 +34272,7 @@
 	            {
 	              className: 'doctag',
 	              begin: '@[A-Za-z]+'
-	            },
-	            PREPROCESSOR
+	            }
 	          ]
 	        }
 	      ),
@@ -41202,7 +34352,7 @@
 	};
 
 /***/ },
-/* 355 */
+/* 290 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41258,7 +34408,7 @@
 	};
 
 /***/ },
-/* 356 */
+/* 291 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41310,7 +34460,7 @@
 	};
 
 /***/ },
-/* 357 */
+/* 292 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41344,7 +34494,7 @@
 	};
 
 /***/ },
-/* 358 */
+/* 293 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41436,7 +34586,7 @@
 	};
 
 /***/ },
-/* 359 */
+/* 294 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41476,7 +34626,7 @@
 	};
 
 /***/ },
-/* 360 */
+/* 295 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41595,7 +34745,7 @@
 	};
 
 /***/ },
-/* 361 */
+/* 296 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41691,7 +34841,7 @@
 	};
 
 /***/ },
-/* 362 */
+/* 297 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41718,7 +34868,7 @@
 	};
 
 /***/ },
-/* 363 */
+/* 298 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41792,7 +34942,7 @@
 	};
 
 /***/ },
-/* 364 */
+/* 299 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41823,7 +34973,7 @@
 	};
 
 /***/ },
-/* 365 */
+/* 300 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41894,7 +35044,7 @@
 	};
 
 /***/ },
-/* 366 */
+/* 301 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41934,171 +35084,7 @@
 	};
 
 /***/ },
-/* 367 */
-/***/ function(module, exports) {
-
-	module.exports = function(hljs) {
-	  var RUBY_METHOD_RE = '[a-zA-Z_]\\w*[!?=]?|[-+~]\\@|<<|>>|=~|===?|<=>|[<>]=?|\\*\\*|[-/+%^&*~`|]|\\[\\]=?';
-	  var RUBY_KEYWORDS =
-	    'and false then defined module in return redo if BEGIN retry end for true self when ' +
-	    'next until do begin unless END rescue nil else break undef not super class case ' +
-	    'require yield alias while ensure elsif or include attr_reader attr_writer attr_accessor';
-	  var YARDOCTAG = {
-	    className: 'doctag',
-	    begin: '@[A-Za-z]+'
-	  };
-	  var IRB_OBJECT = {
-	    begin: '#<', end: '>'
-	  };
-	  var COMMENT_MODES = [
-	    hljs.COMMENT(
-	      '#',
-	      '$',
-	      {
-	        contains: [YARDOCTAG]
-	      }
-	    ),
-	    hljs.COMMENT(
-	      '^\\=begin',
-	      '^\\=end',
-	      {
-	        contains: [YARDOCTAG],
-	        relevance: 10
-	      }
-	    ),
-	    hljs.COMMENT('^__END__', '\\n$')
-	  ];
-	  var SUBST = {
-	    className: 'subst',
-	    begin: '#\\{', end: '}',
-	    keywords: RUBY_KEYWORDS
-	  };
-	  var STRING = {
-	    className: 'string',
-	    contains: [hljs.BACKSLASH_ESCAPE, SUBST],
-	    variants: [
-	      {begin: /'/, end: /'/},
-	      {begin: /"/, end: /"/},
-	      {begin: /`/, end: /`/},
-	      {begin: '%[qQwWx]?\\(', end: '\\)'},
-	      {begin: '%[qQwWx]?\\[', end: '\\]'},
-	      {begin: '%[qQwWx]?{', end: '}'},
-	      {begin: '%[qQwWx]?<', end: '>'},
-	      {begin: '%[qQwWx]?/', end: '/'},
-	      {begin: '%[qQwWx]?%', end: '%'},
-	      {begin: '%[qQwWx]?-', end: '-'},
-	      {begin: '%[qQwWx]?\\|', end: '\\|'},
-	      {
-	        // \B in the beginning suppresses recognition of ?-sequences where ?
-	        // is the last character of a preceding identifier, as in: `func?4`
-	        begin: /\B\?(\\\d{1,3}|\\x[A-Fa-f0-9]{1,2}|\\u[A-Fa-f0-9]{4}|\\?\S)\b/
-	      }
-	    ]
-	  };
-	  var PARAMS = {
-	    className: 'params',
-	    begin: '\\(', end: '\\)', endsParent: true,
-	    keywords: RUBY_KEYWORDS
-	  };
-	
-	  var RUBY_DEFAULT_CONTAINS = [
-	    STRING,
-	    IRB_OBJECT,
-	    {
-	      className: 'class',
-	      beginKeywords: 'class module', end: '$|;',
-	      illegal: /=/,
-	      contains: [
-	        hljs.inherit(hljs.TITLE_MODE, {begin: '[A-Za-z_]\\w*(::\\w+)*(\\?|\\!)?'}),
-	        {
-	          begin: '<\\s*',
-	          contains: [{
-	            begin: '(' + hljs.IDENT_RE + '::)?' + hljs.IDENT_RE
-	          }]
-	        }
-	      ].concat(COMMENT_MODES)
-	    },
-	    {
-	      className: 'function',
-	      beginKeywords: 'def', end: '$|;',
-	      contains: [
-	        hljs.inherit(hljs.TITLE_MODE, {begin: RUBY_METHOD_RE}),
-	        PARAMS
-	      ].concat(COMMENT_MODES)
-	    },
-	    {
-	      className: 'symbol',
-	      begin: hljs.UNDERSCORE_IDENT_RE + '(\\!|\\?)?:',
-	      relevance: 0
-	    },
-	    {
-	      className: 'symbol',
-	      begin: ':',
-	      contains: [STRING, {begin: RUBY_METHOD_RE}],
-	      relevance: 0
-	    },
-	    {
-	      className: 'number',
-	      begin: '(\\b0[0-7_]+)|(\\b0x[0-9a-fA-F_]+)|(\\b[1-9][0-9_]*(\\.[0-9_]+)?)|[0_]\\b',
-	      relevance: 0
-	    },
-	    {
-	      begin: '(\\$\\W)|((\\$|\\@\\@?)(\\w+))' // variables
-	    },
-	    { // regexp container
-	      begin: '(' + hljs.RE_STARTERS_RE + ')\\s*',
-	      contains: [
-	        IRB_OBJECT,
-	        {
-	          className: 'regexp',
-	          contains: [hljs.BACKSLASH_ESCAPE, SUBST],
-	          illegal: /\n/,
-	          variants: [
-	            {begin: '/', end: '/[a-z]*'},
-	            {begin: '%r{', end: '}[a-z]*'},
-	            {begin: '%r\\(', end: '\\)[a-z]*'},
-	            {begin: '%r!', end: '![a-z]*'},
-	            {begin: '%r\\[', end: '\\][a-z]*'}
-	          ]
-	        }
-	      ].concat(COMMENT_MODES),
-	      relevance: 0
-	    }
-	  ].concat(COMMENT_MODES);
-	
-	  SUBST.contains = RUBY_DEFAULT_CONTAINS;
-	  PARAMS.contains = RUBY_DEFAULT_CONTAINS;
-	
-	  var SIMPLE_PROMPT = "[>?]>";
-	  var DEFAULT_PROMPT = "[\\w#]+\\(\\w+\\):\\d+:\\d+>";
-	  var RVM_PROMPT = "(\\w+-)?\\d+\\.\\d+\\.\\d(p\\d+)?[^>]+>";
-	
-	  var IRB_DEFAULT = [
-	    {
-	      begin: /^\s*=>/,
-	      starts: {
-	        end: '$', contains: RUBY_DEFAULT_CONTAINS
-	      }
-	    },
-	    {
-	      className: 'meta',
-	      begin: '^('+SIMPLE_PROMPT+"|"+DEFAULT_PROMPT+'|'+RVM_PROMPT+')',
-	      starts: {
-	        end: '$', contains: RUBY_DEFAULT_CONTAINS
-	      }
-	    }
-	  ];
-	
-	  return {
-	    aliases: ['rb', 'gemspec', 'podspec', 'thor', 'irb'],
-	    keywords: RUBY_KEYWORDS,
-	    illegal: /\/\*/,
-	    contains: COMMENT_MODES.concat(IRB_DEFAULT).concat(RUBY_DEFAULT_CONTAINS)
-	  };
-	};
-
-/***/ },
-/* 368 */
+/* 302 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -42163,13 +35149,22 @@
 	};
 
 /***/ },
-/* 369 */
+/* 303 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  var NUM_SUFFIX = '([uif](8|16|32|64|size))\?';
 	  var BLOCK_COMMENT = hljs.inherit(hljs.C_BLOCK_COMMENT_MODE);
 	  BLOCK_COMMENT.contains.push('self');
+	  var KEYWORDS =
+	    'alignof as be box break const continue crate do else enum extern ' +
+	    'false fn for if impl in let loop match mod mut offsetof once priv ' +
+	    'proc pub pure ref return self Self sizeof static struct super trait true ' +
+	    'type typeof unsafe unsized use virtual while where yield move ' +
+	    'int i8 i16 i32 i64 ' +
+	    'uint u8 u32 u64 ' +
+	    'float f32 f64 ' +
+	    'str char bool'
 	  var BUILTINS =
 	    // prelude
 	    'Copy Send Sized Sync Drop Fn FnMut FnOnce drop Box ToOwned Clone ' +
@@ -42181,19 +35176,12 @@
 	    'debug_assert! debug_assert_eq! env! panic! file! format! format_args! ' +
 	    'include_bin! include_str! line! local_data_key! module_path! ' +
 	    'option_env! print! println! select! stringify! try! unimplemented! ' +
-	    'unreachable! vec! write! writeln!';
+	    'unreachable! vec! write! writeln! macro_rules!';
 	  return {
 	    aliases: ['rs'],
 	    keywords: {
 	      keyword:
-	        'alignof as be box break const continue crate do else enum extern ' +
-	        'false fn for if impl in let loop match mod mut offsetof once priv ' +
-	        'proc pub pure ref return self Self sizeof static struct super trait true ' +
-	        'type typeof unsafe unsized use virtual while where yield ' +
-	        'int i8 i16 i32 i64 ' +
-	        'uint u8 u32 u64 ' +
-	        'float f32 f64 ' +
-	        'str char bool',
+	        KEYWORDS,
 	      literal:
 	        'true false Some None Ok Err',
 	      built_in:
@@ -42245,8 +35233,10 @@
 	      },
 	      {
 	        className: 'class',
-	        beginKeywords: 'type', end: '(=|<)',
-	        contains: [hljs.UNDERSCORE_TITLE_MODE],
+	        beginKeywords: 'type', end: ';',
+	        contains: [
+	          hljs.inherit(hljs.UNDERSCORE_TITLE_MODE, {endsParent: true})
+	        ],
 	        illegal: '\\S'
 	      },
 	      {
@@ -42262,6 +35252,11 @@
 	        keywords: {built_in: BUILTINS}
 	      },
 	      {
+	        className: 'params',
+	        begin: /\|/, end: /\|/,
+	        keywords: KEYWORDS
+	      },
+	      {
 	        begin: '->'
 	      }
 	    ]
@@ -42269,7 +35264,7 @@
 	};
 
 /***/ },
-/* 370 */
+/* 304 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -42388,7 +35383,7 @@
 	};
 
 /***/ },
-/* 371 */
+/* 305 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -42488,32 +35483,52 @@
 	    relevance: 0
 	  };
 	
+	  var QUOTED_LIST = {
+	    begin: /'/,
+	    contains: [
+	      {
+	        begin: '\\(', end: '\\)',
+	        contains: ['self', LITERAL, STRING, NUMBER, IDENT, QUOTED_IDENT]
+	      }
+	    ]
+	  };
+	
+	  var NAME = {
+	    className: 'name',
+	    begin: SCHEME_IDENT_RE,
+	    lexemes: SCHEME_IDENT_RE,
+	    keywords: BUILTINS
+	  };
+	
+	  var LAMBDA = {
+	    begin: /lambda/, endsWithParent: true, returnBegin: true,
+	    contains: [
+	      NAME,
+	      {
+	        begin: /\(/, end: /\)/, endsParent: true,
+	        contains: [IDENT],
+	      }
+	    ]
+	  };
+	
 	  var LIST = {
 	    variants: [
 	      { begin: '\\(', end: '\\)' },
 	      { begin: '\\[', end: '\\]' }
 	    ],
-	    contains: [
-	      {
-	        className: 'name',
-	        begin: SCHEME_IDENT_RE,
-	        lexemes: SCHEME_IDENT_RE,
-	        keywords: BUILTINS
-	      },
-	      BODY
-	    ]
+	    contains: [LAMBDA, NAME, BODY]
 	  };
 	
-	  BODY.contains = [LITERAL, NUMBER, STRING, IDENT, QUOTED_IDENT, LIST].concat(COMMENT_MODES);
+	  BODY.contains = [LITERAL, NUMBER, STRING, IDENT, QUOTED_IDENT, QUOTED_LIST, LIST].concat(COMMENT_MODES);
 	
 	  return {
 	    illegal: /\S/,
-	    contains: [SHEBANG, NUMBER, STRING, QUOTED_IDENT, LIST].concat(COMMENT_MODES)
+	    contains: [SHEBANG, NUMBER, STRING, QUOTED_IDENT, QUOTED_LIST, LIST].concat(COMMENT_MODES)
 	  };
 	};
 
 /***/ },
-/* 372 */
+/* 306 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -42571,7 +35586,7 @@
 	};
 
 /***/ },
-/* 373 */
+/* 307 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -42673,7 +35688,7 @@
 	};
 
 /***/ },
-/* 374 */
+/* 308 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -42733,7 +35748,7 @@
 	};
 
 /***/ },
-/* 375 */
+/* 309 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -42787,7 +35802,7 @@
 	};
 
 /***/ },
-/* 376 */
+/* 310 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -42811,7 +35826,8 @@
 	    contains: [
 	      {
 	        className: 'literal',
-	        begin: '\\[(\\|\\|)?\\]|\\(\\)'
+	        begin: /\[(\|\|)?\]|\(\)/,
+	        relevance: 0
 	      },
 	      hljs.COMMENT(
 	        '\\(\\*',
@@ -42856,7 +35872,7 @@
 	};
 
 /***/ },
-/* 377 */
+/* 311 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -42957,14 +35973,14 @@
 	};
 
 /***/ },
-/* 378 */
+/* 312 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  var COMMENT_MODE = hljs.COMMENT('--', '$');
 	  return {
 	    case_insensitive: true,
-	    illegal: /[<>{}*]/,
+	    illegal: /[<>{}*#]/,
 	    contains: [
 	      {
 	        beginKeywords:
@@ -42974,6 +35990,7 @@
 	          'unlock purge reset change stop analyze cache flush optimize repair kill ' +
 	          'install uninstall checksum restore check backup revoke',
 	        end: /;/, endsWithParent: true,
+	        lexemes: /[\w\.]+/,
 	        keywords: {
 	          keyword:
 	            'abort abs absolute acc acce accep accept access accessed accessible account acos action activate add ' +
@@ -42984,7 +36001,7 @@
 	            'authors auto autoallocate autodblink autoextend automatic availability avg backup badfile basicfile ' +
 	            'before begin beginning benchmark between bfile bfile_base big bigfile bin binary_double binary_float ' +
 	            'binlog bit_and bit_count bit_length bit_or bit_xor bitmap blob_base block blocksize body both bound ' +
-	            'buffer_cache buffer_pool build bulk by byte byteordermark bytes c cache caching call calling cancel ' +
+	            'buffer_cache buffer_pool build bulk by byte byteordermark bytes cache caching call calling cancel ' +
 	            'capacity cascade cascaded case cast catalog category ceil ceiling chain change changed char_base ' +
 	            'char_length character_length characters characterset charindex charset charsetform charsetid check ' +
 	            'checksum checksum_agg child choose chr chunk class cleanup clear client clob clob_base clone close ' +
@@ -42996,7 +36013,7 @@
 	            'contributors controlfile conv convert convert_tz corr corr_k corr_s corresponding corruption cos cost ' +
 	            'count count_big counted covar_pop covar_samp cpu_per_call cpu_per_session crc32 create creation ' +
 	            'critical cross cube cume_dist curdate current current_date current_time current_timestamp current_user ' +
-	            'cursor curtime customdatum cycle d data database databases datafile datafiles datalength date_add ' +
+	            'cursor curtime customdatum cycle data database databases datafile datafiles datalength date_add ' +
 	            'date_cache date_format date_sub dateadd datediff datefromparts datename datepart datetime2fromparts ' +
 	            'day day_to_second dayname dayofmonth dayofweek dayofyear days db_role_change dbtimezone ddl deallocate ' +
 	            'declare decode decompose decrement decrypt deduplicate def defa defau defaul default defaults ' +
@@ -43004,34 +36021,34 @@
 	            'depth dequeue des_decrypt des_encrypt des_key_file desc descr descri describ describe descriptor ' +
 	            'deterministic diagnostics difference dimension direct_load directory disable disable_all ' +
 	            'disallow disassociate discardfile disconnect diskgroup distinct distinctrow distribute distributed div ' +
-	            'do document domain dotnet double downgrade drop dumpfile duplicate duration e each edition editionable ' +
+	            'do document domain dotnet double downgrade drop dumpfile duplicate duration each edition editionable ' +
 	            'editions element ellipsis else elsif elt empty enable enable_all enclosed encode encoding encrypt ' +
 	            'end end-exec endian enforced engine engines enqueue enterprise entityescaping eomonth error errors ' +
 	            'escaped evalname evaluate event eventdata events except exception exceptions exchange exclude excluding ' +
 	            'execu execut execute exempt exists exit exp expire explain export export_set extended extent external ' +
-	            'external_1 external_2 externally extract f failed failed_login_attempts failover failure far fast ' +
+	            'external_1 external_2 externally extract failed failed_login_attempts failover failure far fast ' +
 	            'feature_set feature_value fetch field fields file file_name_convert filesystem_like_logging final ' +
 	            'finish first first_value fixed flash_cache flashback floor flush following follows for forall force ' +
 	            'form forma format found found_rows freelist freelists freepools fresh from from_base64 from_days ' +
-	            'ftp full function g general generated get get_format get_lock getdate getutcdate global global_name ' +
+	            'ftp full function general generated get get_format get_lock getdate getutcdate global global_name ' +
 	            'globally go goto grant grants greatest group group_concat group_id grouping grouping_id groups ' +
 	            'gtid_subtract guarantee guard handler hash hashkeys having hea head headi headin heading heap help hex ' +
-	            'hierarchy high high_priority hosts hour http i id ident_current ident_incr ident_seed identified ' +
+	            'hierarchy high high_priority hosts hour http id ident_current ident_incr ident_seed identified ' +
 	            'identity idle_time if ifnull ignore iif ilike ilm immediate import in include including increment ' +
 	            'index indexes indexing indextype indicator indices inet6_aton inet6_ntoa inet_aton inet_ntoa infile ' +
 	            'initial initialized initially initrans inmemory inner innodb input insert install instance instantiable ' +
 	            'instr interface interleaved intersect into invalidate invisible is is_free_lock is_ipv4 is_ipv4_compat ' +
 	            'is_not is_not_null is_used_lock isdate isnull isolation iterate java join json json_exists ' +
-	            'k keep keep_duplicates key keys kill l language large last last_day last_insert_id last_value lax lcase ' +
+	            'keep keep_duplicates key keys kill language large last last_day last_insert_id last_value lax lcase ' +
 	            'lead leading least leaves left len lenght length less level levels library like like2 like4 likec limit ' +
 	            'lines link list listagg little ln load load_file lob lobs local localtime localtimestamp locate ' +
 	            'locator lock locked log log10 log2 logfile logfiles logging logical logical_reads_per_call ' +
-	            'logoff logon logs long loop low low_priority lower lpad lrtrim ltrim m main make_set makedate maketime ' +
+	            'logoff logon logs long loop low low_priority lower lpad lrtrim ltrim main make_set makedate maketime ' +
 	            'managed management manual map mapping mask master master_pos_wait match matched materialized max ' +
 	            'maxextents maximize maxinstances maxlen maxlogfiles maxloghistory maxlogmembers maxsize maxtrans ' +
 	            'md5 measures median medium member memcompress memory merge microsecond mid migration min minextents ' +
 	            'minimum mining minus minute minvalue missing mod mode model modification modify module monitoring month ' +
-	            'months mount move movement multiset mutex n name name_const names nan national native natural nav nchar ' +
+	            'months mount move movement multiset mutex name name_const names nan national native natural nav nchar ' +
 	            'nclob nested never new newline next nextval no no_write_to_binlog noarchivelog noaudit nobadfile ' +
 	            'nocheck nocompress nocopy nocycle nodelay nodiscardfile noentityescaping noguarantee nokeep nologfile ' +
 	            'nomapping nomaxvalue nominimize nominvalue nomonitoring none noneditionable nonschema noorder ' +
@@ -43041,7 +36058,7 @@
 	            'ociref ocirefcursor ocirowid ocistring ocitype oct octet_length of off offline offset oid oidindex old ' +
 	            'on online only opaque open operations operator optimal optimize option optionally or oracle oracle_date ' +
 	            'oradata ord ordaudio orddicom orddoc order ordimage ordinality ordvideo organization orlany orlvary ' +
-	            'out outer outfile outline output over overflow overriding p package pad parallel parallel_enable ' +
+	            'out outer outfile outline output over overflow overriding package pad parallel parallel_enable ' +
 	            'parameters parent parse partial partition partitions pascal passing password password_grace_time ' +
 	            'password_lock_time password_reuse_max password_reuse_time password_verify_function patch path patindex ' +
 	            'pctincrease pctthreshold pctused pctversion percent percent_rank percentile_cont percentile_disc ' +
@@ -43071,7 +36088,7 @@
 	            'stop storage store stored str str_to_date straight_join strcmp strict string struct stuff style subdate ' +
 	            'subpartition subpartitions substitutable substr substring subtime subtring_index subtype success sum ' +
 	            'suspend switch switchoffset switchover sync synchronous synonym sys sys_xmlagg sysasm sysaux sysdate ' +
-	            'sysdatetimeoffset sysdba sysoper system system_user sysutcdatetime t table tables tablespace tan tdo ' +
+	            'sysdatetimeoffset sysdba sysoper system system_user sysutcdatetime table tables tablespace tan tdo ' +
 	            'template temporary terminated tertiary_weights test than then thread through tier ties time time_format ' +
 	            'time_zone timediff timefromparts timeout timestamp timestampadd timestampdiff timezone_abbr ' +
 	            'timezone_minute timezone_region to to_base64 to_date to_days to_seconds todatetimeoffset trace tracking ' +
@@ -43120,7 +36137,7 @@
 	};
 
 /***/ },
-/* 379 */
+/* 313 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -43207,7 +36224,7 @@
 	};
 
 /***/ },
-/* 380 */
+/* 314 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -43249,7 +36266,7 @@
 	};
 
 /***/ },
-/* 381 */
+/* 315 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -43300,7 +36317,7 @@
 	};
 
 /***/ },
-/* 382 */
+/* 316 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -43629,13 +36646,12 @@
 	
 	  // illegals
 	  var ILLEGAL = [
-	    '\\{',
-	    '\\}',
 	    '\\?',
 	    '(\\bReturn\\b)', // monkey
 	    '(\\bEnd\\b)', // monkey
 	    '(\\bend\\b)', // vbscript
-	    ';', // sql
+	    '(\\bdef\\b)', // gradle
+	    ';', // a whole lot of languages
 	    '#\\s', // markdown
 	    '\\*\\s', // markdown
 	    '===\\s', // markdown
@@ -43646,8 +36662,8 @@
 	  return {
 	    aliases: ['styl'],
 	    case_insensitive: false,
-	    illegal: '(' + ILLEGAL.join('|') + ')',
 	    keywords: 'if else for in',
+	    illegal: '(' + ILLEGAL.join('|') + ')',
 	    contains: [
 	
 	      // strings
@@ -43737,14 +36753,29 @@
 	      //  - must have whitespace after it
 	      {
 	        className: 'attribute',
-	        begin: '\\b(' + ATTRIBUTES.reverse().join('|') + ')\\b'
+	        begin: '\\b(' + ATTRIBUTES.reverse().join('|') + ')\\b',
+	        starts: {
+	          // value container
+	          end: /;|$/,
+	          contains: [
+	            HEX_COLOR,
+	            VARIABLE,
+	            hljs.APOS_STRING_MODE,
+	            hljs.QUOTE_STRING_MODE,
+	            hljs.CSS_NUMBER_MODE,
+	            hljs.NUMBER_MODE,
+	            hljs.C_BLOCK_COMMENT_MODE
+	          ],
+	          illegal: /\./,
+	          relevance: 0
+	        }
 	      }
 	    ]
 	  };
 	};
 
 /***/ },
-/* 383 */
+/* 317 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -43867,7 +36898,7 @@
 	};
 
 /***/ },
-/* 384 */
+/* 318 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -43932,7 +36963,7 @@
 	};
 
 /***/ },
-/* 385 */
+/* 319 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -43998,7 +37029,7 @@
 	};
 
 /***/ },
-/* 386 */
+/* 320 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -44037,7 +37068,7 @@
 	};
 
 /***/ },
-/* 387 */
+/* 321 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -44125,7 +37156,7 @@
 	};
 
 /***/ },
-/* 388 */
+/* 322 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -44195,7 +37226,7 @@
 	};
 
 /***/ },
-/* 389 */
+/* 323 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -44303,7 +37334,7 @@
 	};
 
 /***/ },
-/* 390 */
+/* 324 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -44316,22 +37347,22 @@
 	        // Reference types
 	        'weak unowned owned ' +
 	        // Modifiers
-	        'async signal static abstract interface override ' +
+	        'async signal static abstract interface override virtual delegate ' +
 	        // Control Structures
-	        'while do for foreach else switch case break default return try catch ' +
+	        'if while do for foreach else switch case break default return try catch ' +
 	        // Visibility
 	        'public private protected internal ' +
 	        // Other
 	        'using new this get set const stdout stdin stderr var',
 	      built_in:
-	        'DBus GLib CCode Gee Object',
+	        'DBus GLib CCode Gee Object Gtk Posix',
 	      literal:
 	        'false true null'
 	    },
 	    contains: [
 	      {
 	        className: 'class',
-	        beginKeywords: 'class interface delegate namespace', end: '{', excludeEnd: true,
+	        beginKeywords: 'class interface namespace', end: '{', excludeEnd: true,
 	        illegal: '[^,:\\n\\s\\.]',
 	        contains: [
 	          hljs.UNDERSCORE_TITLE_MODE
@@ -44357,7 +37388,7 @@
 	};
 
 /***/ },
-/* 391 */
+/* 325 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -44417,7 +37448,7 @@
 	};
 
 /***/ },
-/* 392 */
+/* 326 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -44460,7 +37491,7 @@
 	};
 
 /***/ },
-/* 393 */
+/* 327 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -44476,7 +37507,7 @@
 	};
 
 /***/ },
-/* 394 */
+/* 328 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -44518,7 +37549,7 @@
 	};
 
 /***/ },
-/* 395 */
+/* 329 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -44578,21 +37609,21 @@
 	};
 
 /***/ },
-/* 396 */
+/* 330 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  return {
 	    lexemes: /[!#@\w]+/,
 	    keywords: {
-	      keyword: //ex command
+	      keyword:
 	        // express version except: ! & * < = > !! # @ @@
 	        'N|0 P|0 X|0 a|0 ab abc abo al am an|0 ar arga argd arge argdo argg argl argu as au aug aun b|0 bN ba bad bd be bel bf bl bm bn bo bp br brea breaka breakd breakl bro bufdo buffers bun bw c|0 cN cNf ca cabc caddb cad caddf cal cat cb cc ccl cd ce cex cf cfir cgetb cgete cg changes chd che checkt cl cla clo cm cmapc cme cn cnew cnf cno cnorea cnoreme co col colo com comc comp con conf cope '+
-	        'cp cpf cq cr cs cst cu cuna cunme cw d|0 delm deb debugg delc delf dif diffg diffo diffp diffpu diffs diffthis dig di dl dell dj dli do doautoa dp dr ds dsp e|0 ea ec echoe echoh echom echon el elsei em en endfo endf endt endw ene ex exe exi exu f|0 files filet fin fina fini fir fix fo foldc foldd folddoc foldo for fu g|0 go gr grepa gu gv ha h|0 helpf helpg helpt hi hid his i|0 ia iabc if ij il im imapc '+
-	        'ime ino inorea inoreme int is isp iu iuna iunme j|0 ju k|0 keepa kee keepj lN lNf l|0 lad laddb laddf la lan lat lb lc lch lcl lcs le lefta let lex lf lfir lgetb lgete lg lgr lgrepa lh ll lla lli lmak lm lmapc lne lnew lnf ln loadk lo loc lockv lol lope lp lpf lr ls lt lu lua luad luaf lv lvimgrepa lw m|0 ma mak map mapc marks mat me menut mes mk mks mksp mkv mkvie mod mz mzf nbc nb nbs n|0 new nm nmapc nme nn nnoreme noa no noh norea noreme norm nu nun nunme ol o|0 om omapc ome on ono onoreme opt ou ounme ow p|0 '+
-	        'profd prof pro promptr pc ped pe perld po popu pp pre prev ps pt ptN ptf ptj ptl ptn ptp ptr pts pu pw py3 python3 py3d py3f py pyd pyf q|0 quita qa r|0 rec red redi redr redraws reg res ret retu rew ri rightb rub rubyd rubyf rund ru rv s|0 sN san sa sal sav sb sbN sba sbf sbl sbm sbn sbp sbr scrip scripte scs se setf setg setl sf sfir sh sim sig sil sl sla sm smap smapc sme sn sni sno snor snoreme sor '+
-	        'so spelld spe spelli spellr spellu spellw sp spr sre st sta startg startr star stopi stj sts sun sunm sunme sus sv sw sy synti sync t|0 tN tabN tabc tabdo tabe tabf tabfir tabl tabm tabnew '+
-	        'tabn tabo tabp tabr tabs tab ta tags tc tcld tclf te tf th tj tl tm tn to tp tr try ts tu u|0 undoj undol una unh unl unlo unm unme uns up v|0 ve verb vert vim vimgrepa vi viu vie vm vmapc vme vne vn vnoreme vs vu vunme windo w|0 wN wa wh wi winc winp wn wp wq wqa ws wu wv x|0 xa xmapc xm xme xn xnoreme xu xunme y|0 z|0 ~ '+
+	        'cp cpf cq cr cs cst cu cuna cunme cw delm deb debugg delc delf dif diffg diffo diffp diffpu diffs diffthis dig di dl dell dj dli do doautoa dp dr ds dsp e|0 ea ec echoe echoh echom echon el elsei em en endfo endf endt endw ene ex exe exi exu f|0 files filet fin fina fini fir fix fo foldc foldd folddoc foldo for fu go gr grepa gu gv ha helpf helpg helpt hi hid his ia iabc if ij il im imapc '+
+	        'ime ino inorea inoreme int is isp iu iuna iunme j|0 ju k|0 keepa kee keepj lN lNf l|0 lad laddb laddf la lan lat lb lc lch lcl lcs le lefta let lex lf lfir lgetb lgete lg lgr lgrepa lh ll lla lli lmak lm lmapc lne lnew lnf ln loadk lo loc lockv lol lope lp lpf lr ls lt lu lua luad luaf lv lvimgrepa lw m|0 ma mak map mapc marks mat me menut mes mk mks mksp mkv mkvie mod mz mzf nbc nb nbs new nm nmapc nme nn nnoreme noa no noh norea noreme norm nu nun nunme ol o|0 om omapc ome on ono onoreme opt ou ounme ow p|0 '+
+	        'profd prof pro promptr pc ped pe perld po popu pp pre prev ps pt ptN ptf ptj ptl ptn ptp ptr pts pu pw py3 python3 py3d py3f py pyd pyf quita qa rec red redi redr redraws reg res ret retu rew ri rightb rub rubyd rubyf rund ru rv sN san sa sal sav sb sbN sba sbf sbl sbm sbn sbp sbr scrip scripte scs se setf setg setl sf sfir sh sim sig sil sl sla sm smap smapc sme sn sni sno snor snoreme sor '+
+	        'so spelld spe spelli spellr spellu spellw sp spr sre st sta startg startr star stopi stj sts sun sunm sunme sus sv sw sy synti sync tN tabN tabc tabdo tabe tabf tabfir tabl tabm tabnew '+
+	        'tabn tabo tabp tabr tabs tab ta tags tc tcld tclf te tf th tj tl tm tn to tp tr try ts tu u|0 undoj undol una unh unl unlo unm unme uns up ve verb vert vim vimgrepa vi viu vie vm vmapc vme vne vn vnoreme vs vu vunme windo w|0 wN wa wh wi winc winp wn wp wq wqa ws wu wv x|0 xa xmapc xm xme xn xnoreme xu xunme y|0 z|0 ~ '+
 	        // full version
 	        'Next Print append abbreviate abclear aboveleft all amenu anoremenu args argadd argdelete argedit argglobal arglocal argument ascii autocmd augroup aunmenu buffer bNext ball badd bdelete behave belowright bfirst blast bmodified bnext botright bprevious brewind break breakadd breakdel breaklist browse bunload '+
 	        'bwipeout change cNext cNfile cabbrev cabclear caddbuffer caddexpr caddfile call catch cbuffer cclose center cexpr cfile cfirst cgetbuffer cgetexpr cgetfile chdir checkpath checktime clist clast close cmap cmapclear cmenu cnext cnewer cnfile cnoremap cnoreabbrev cnoremenu copy colder colorscheme command comclear compiler continue confirm copen cprevious cpfile cquit crewind cscope cstag cunmap '+
@@ -44606,24 +37637,63 @@
 	        'startinsert stopinsert stjump stselect sunhide sunmap sunmenu suspend sview swapname syntax syntime syncbind tNext tabNext tabclose tabedit tabfind tabfirst tablast tabmove tabnext tabonly tabprevious tabrewind tag tcl tcldo tclfile tearoff tfirst throw tjump tlast tmenu tnext topleft tprevious '+'trewind tselect tunmenu undo undojoin undolist unabbreviate unhide unlet unlockvar unmap unmenu unsilent update vglobal version verbose vertical vimgrep vimgrepadd visual viusage view vmap vmapclear vmenu vnew '+
 	        'vnoremap vnoremenu vsplit vunmap vunmenu write wNext wall while winsize wincmd winpos wnext wprevious wqall wsverb wundo wviminfo xit xall xmapclear xmap xmenu xnoremap xnoremenu xunmap xunmenu yank',
 	      built_in: //built in func
-	        'abs acos add and append argc argidx argv asin atan atan2 browse browsedir bufexists buflisted bufloaded bufname bufnr bufwinnr byte2line byteidx call ceil changenr char2nr cindent clearmatches col complete complete_add complete_check confirm copy cos cosh count cscope_connection cursor '+
-	        'deepcopy delete did_filetype diff_filler diff_hlID empty escape eval eventhandler executable exists exp expand extend feedkeys filereadable filewritable filter finddir findfile float2nr floor fmod fnameescape fnamemodify foldclosed foldclosedend foldlevel foldtext foldtextresult foreground function '+
-	        'garbagecollect get getbufline getbufvar getchar getcharmod getcmdline getcmdpos getcmdtype getcwd getfontname getfperm getfsize getftime getftype getline getloclist getmatches getpid getpos getqflist getreg getregtype gettabvar gettabwinvar getwinposx getwinposy getwinvar glob globpath has has_key '+
-	        'haslocaldir hasmapto histadd histdel histget histnr hlexists hlID hostname iconv indent index input inputdialog inputlist inputrestore inputsave inputsecret insert invert isdirectory islocked items join keys len libcall libcallnr line line2byte lispindent localtime log log10 luaeval map maparg mapcheck '+
-	        'match matchadd matcharg matchdelete matchend matchlist matchstr max min mkdir mode mzeval nextnonblank nr2char or pathshorten pow prevnonblank printf pumvisible py3eval pyeval range readfile reltime reltimestr remote_expr remote_foreground remote_peek remote_read remote_send remove rename repeat '+
-	        'resolve reverse round screenattr screenchar screencol screenrow search searchdecl searchpair searchpairpos searchpos server2client serverlist setbufvar setcmdpos setline setloclist setmatches setpos setqflist setreg settabvar settabwinvar setwinvar sha256 shellescape shiftwidth simplify sin '+
-	        'sinh sort soundfold spellbadword spellsuggest split sqrt str2float str2nr strchars strdisplaywidth strftime stridx string strlen strpart strridx strtrans strwidth submatch substitute synconcealed synID synIDattr '+
-	        'synIDtrans synstack system tabpagebuflist tabpagenr tabpagewinnr tagfiles taglist tan tanh tempname tolower toupper tr trunc type undofile undotree values virtcol visualmode wildmenumode winbufnr wincol winheight winline winnr winrestcmd winrestview winsaveview winwidth writefile xor'
+	        'synIDtrans atan2 range matcharg did_filetype asin feedkeys xor argv ' +
+	        'complete_check add getwinposx getqflist getwinposy screencol ' +
+	        'clearmatches empty extend getcmdpos mzeval garbagecollect setreg ' +
+	        'ceil sqrt diff_hlID inputsecret get getfperm getpid filewritable ' +
+	        'shiftwidth max sinh isdirectory synID system inputrestore winline ' +
+	        'atan visualmode inputlist tabpagewinnr round getregtype mapcheck ' +
+	        'hasmapto histdel argidx findfile sha256 exists toupper getcmdline ' +
+	        'taglist string getmatches bufnr strftime winwidth bufexists ' +
+	        'strtrans tabpagebuflist setcmdpos remote_read printf setloclist ' +
+	        'getpos getline bufwinnr float2nr len getcmdtype diff_filler luaeval ' +
+	        'resolve libcallnr foldclosedend reverse filter has_key bufname ' +
+	        'str2float strlen setline getcharmod setbufvar index searchpos ' +
+	        'shellescape undofile foldclosed setqflist buflisted strchars str2nr ' +
+	        'virtcol floor remove undotree remote_expr winheight gettabwinvar ' +
+	        'reltime cursor tabpagenr finddir localtime acos getloclist search ' +
+	        'tanh matchend rename gettabvar strdisplaywidth type abs py3eval ' +
+	        'setwinvar tolower wildmenumode log10 spellsuggest bufloaded ' +
+	        'synconcealed nextnonblank server2client complete settabwinvar ' +
+	        'executable input wincol setmatches getftype hlID inputsave ' +
+	        'searchpair or screenrow line settabvar histadd deepcopy strpart ' +
+	        'remote_peek and eval getftime submatch screenchar winsaveview ' +
+	        'matchadd mkdir screenattr getfontname libcall reltimestr getfsize ' +
+	        'winnr invert pow getbufline byte2line soundfold repeat fnameescape ' +
+	        'tagfiles sin strwidth spellbadword trunc maparg log lispindent ' +
+	        'hostname setpos globpath remote_foreground getchar synIDattr ' +
+	        'fnamemodify cscope_connection stridx winbufnr indent min ' +
+	        'complete_add nr2char searchpairpos inputdialog values matchlist ' +
+	        'items hlexists strridx browsedir expand fmod pathshorten line2byte ' +
+	        'argc count getwinvar glob foldtextresult getreg foreground cosh ' +
+	        'matchdelete has char2nr simplify histget searchdecl iconv ' +
+	        'winrestcmd pumvisible writefile foldlevel haslocaldir keys cos ' +
+	        'matchstr foldtext histnr tan tempname getcwd byteidx getbufvar ' +
+	        'islocked escape eventhandler remote_send serverlist winrestview ' +
+	        'synstack pyeval prevnonblank readfile cindent filereadable changenr ' +
+	        'exp'
 	    },
-	    illegal: /[{:]/,
+	    illegal: /;/,
 	    contains: [
 	      hljs.NUMBER_MODE,
 	      hljs.APOS_STRING_MODE,
+	
+	      /*
+	      A double quote can start either a string or a line comment. Strings are
+	      ended before the end of a line by another double quote and can contain
+	      escaped double-quotes and post-escaped line breaks.
+	
+	      Also, any double quote at the beginning of a line is a comment but we
+	      don't handle that properly at the moment: any double quote inside will
+	      turn them into a string. Handling it properly will require a smarter
+	      parser.
+	      */
 	      {
 	        className: 'string',
-	        // quote with escape, comment as quote
-	        begin: /"((\\")|[^"\n])*("|\n)/
+	        begin: /"(\\"|\n\\|[^"\n])*"/
 	      },
+	      hljs.COMMENT('"', '$'),
+	
 	      {
 	        className: 'variable',
 	        begin: /[bwtglsav]:[\w\d_]*/
@@ -44639,13 +37709,17 @@
 	            begin: '\\(', end: '\\)'
 	          }
 	        ]
+	      },
+	      {
+	        className: 'symbol',
+	        begin: /<[\w-]+>/
 	      }
 	    ]
 	  };
 	};
 
 /***/ },
-/* 397 */
+/* 331 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -44783,7 +37857,7 @@
 	};
 
 /***/ },
-/* 398 */
+/* 332 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -44860,113 +37934,7 @@
 	};
 
 /***/ },
-/* 399 */
-/***/ function(module, exports) {
-
-	module.exports = function(hljs) {
-	  var XML_IDENT_RE = '[A-Za-z0-9\\._:-]+';
-	  var PHP = {
-	    begin: /<\?(php)?(?!\w)/, end: /\?>/,
-	    subLanguage: 'php'
-	  };
-	  var TAG_INTERNALS = {
-	    endsWithParent: true,
-	    illegal: /</,
-	    relevance: 0,
-	    contains: [
-	      PHP,
-	      {
-	        className: 'attr',
-	        begin: XML_IDENT_RE,
-	        relevance: 0
-	      },
-	      {
-	        begin: '=',
-	        relevance: 0,
-	        contains: [
-	          {
-	            className: 'string',
-	            contains: [PHP],
-	            variants: [
-	              {begin: /"/, end: /"/},
-	              {begin: /'/, end: /'/},
-	              {begin: /[^\s\/>]+/}
-	            ]
-	          }
-	        ]
-	      }
-	    ]
-	  };
-	  return {
-	    aliases: ['html', 'xhtml', 'rss', 'atom', 'xsl', 'plist'],
-	    case_insensitive: true,
-	    contains: [
-	      {
-	        className: 'meta',
-	        begin: '<!DOCTYPE', end: '>',
-	        relevance: 10,
-	        contains: [{begin: '\\[', end: '\\]'}]
-	      },
-	      hljs.COMMENT(
-	        '<!--',
-	        '-->',
-	        {
-	          relevance: 10
-	        }
-	      ),
-	      {
-	        begin: '<\\!\\[CDATA\\[', end: '\\]\\]>',
-	        relevance: 10
-	      },
-	      {
-	        className: 'tag',
-	        /*
-	        The lookahead pattern (?=...) ensures that 'begin' only matches
-	        '<style' as a single word, followed by a whitespace or an
-	        ending braket. The '$' is needed for the lexeme to be recognized
-	        by hljs.subMode() that tests lexemes outside the stream.
-	        */
-	        begin: '<style(?=\\s|>|$)', end: '>',
-	        keywords: {name: 'style'},
-	        contains: [TAG_INTERNALS],
-	        starts: {
-	          end: '</style>', returnEnd: true,
-	          subLanguage: ['css', 'xml']
-	        }
-	      },
-	      {
-	        className: 'tag',
-	        // See the comment in the <style tag about the lookahead pattern
-	        begin: '<script(?=\\s|>|$)', end: '>',
-	        keywords: {name: 'script'},
-	        contains: [TAG_INTERNALS],
-	        starts: {
-	          end: '\<\/script\>', returnEnd: true,
-	          subLanguage: ['actionscript', 'javascript', 'handlebars', 'xml']
-	        }
-	      },
-	      PHP,
-	      {
-	        className: 'meta',
-	        begin: /<\?\w+/, end: /\?>/,
-	        relevance: 10
-	      },
-	      {
-	        className: 'tag',
-	        begin: '</?', end: '/?>',
-	        contains: [
-	          {
-	            className: 'name', begin: /[^\/><\s]+/, relevance: 0
-	          },
-	          TAG_INTERNALS
-	        ]
-	      }
-	    ]
-	  };
-	};
-
-/***/ },
-/* 400 */
+/* 333 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -44979,8 +37947,7 @@
 	    'replace value rename copy modify update';
 	  var LITERAL = 'false true xs:string xs:integer element item xs:date xs:datetime xs:float xs:double xs:decimal QName xs:anyURI xs:long xs:int xs:short xs:byte attribute';
 	  var VAR = {
-	    begin: /\$[a-zA-Z0-9\-]+/,
-	    relevance: 5
+	    begin: /\$[a-zA-Z0-9\-]+/
 	  };
 	
 	  var NUMBER = {
@@ -45042,7 +38009,7 @@
 	};
 
 /***/ },
-/* 401 */
+/* 334 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -45130,7 +38097,7 @@
 	};
 
 /***/ },
-/* 402 */
+/* 335 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -45241,7 +38208,8393 @@
 	};
 
 /***/ },
+/* 336 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	
+	var _agate = __webpack_require__(337);
+	
+	Object.defineProperty(exports, 'agate', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_agate).default;
+	  }
+	});
+	
+	var _androidstudio = __webpack_require__(338);
+	
+	Object.defineProperty(exports, 'androidstudio', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_androidstudio).default;
+	  }
+	});
+	
+	var _arduinoLight = __webpack_require__(339);
+	
+	Object.defineProperty(exports, 'arduinoLight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_arduinoLight).default;
+	  }
+	});
+	
+	var _arta = __webpack_require__(340);
+	
+	Object.defineProperty(exports, 'arta', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_arta).default;
+	  }
+	});
+	
+	var _ascetic = __webpack_require__(341);
+	
+	Object.defineProperty(exports, 'ascetic', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_ascetic).default;
+	  }
+	});
+	
+	var _atelierCaveDark = __webpack_require__(342);
+	
+	Object.defineProperty(exports, 'atelierCaveDark', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierCaveDark).default;
+	  }
+	});
+	
+	var _atelierCaveLight = __webpack_require__(343);
+	
+	Object.defineProperty(exports, 'atelierCaveLight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierCaveLight).default;
+	  }
+	});
+	
+	var _atelierDuneDark = __webpack_require__(344);
+	
+	Object.defineProperty(exports, 'atelierDuneDark', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierDuneDark).default;
+	  }
+	});
+	
+	var _atelierDuneLight = __webpack_require__(345);
+	
+	Object.defineProperty(exports, 'atelierDuneLight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierDuneLight).default;
+	  }
+	});
+	
+	var _atelierEstuaryDark = __webpack_require__(346);
+	
+	Object.defineProperty(exports, 'atelierEstuaryDark', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierEstuaryDark).default;
+	  }
+	});
+	
+	var _atelierEstuaryLight = __webpack_require__(347);
+	
+	Object.defineProperty(exports, 'atelierEstuaryLight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierEstuaryLight).default;
+	  }
+	});
+	
+	var _atelierForestDark = __webpack_require__(348);
+	
+	Object.defineProperty(exports, 'atelierForestDark', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierForestDark).default;
+	  }
+	});
+	
+	var _atelierForestLight = __webpack_require__(349);
+	
+	Object.defineProperty(exports, 'atelierForestLight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierForestLight).default;
+	  }
+	});
+	
+	var _atelierHeathDark = __webpack_require__(350);
+	
+	Object.defineProperty(exports, 'atelierHeathDark', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierHeathDark).default;
+	  }
+	});
+	
+	var _atelierHeathLight = __webpack_require__(351);
+	
+	Object.defineProperty(exports, 'atelierHeathLight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierHeathLight).default;
+	  }
+	});
+	
+	var _atelierLakesideDark = __webpack_require__(352);
+	
+	Object.defineProperty(exports, 'atelierLakesideDark', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierLakesideDark).default;
+	  }
+	});
+	
+	var _atelierLakesideLight = __webpack_require__(353);
+	
+	Object.defineProperty(exports, 'atelierLakesideLight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierLakesideLight).default;
+	  }
+	});
+	
+	var _atelierPlateauDark = __webpack_require__(354);
+	
+	Object.defineProperty(exports, 'atelierPlateauDark', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierPlateauDark).default;
+	  }
+	});
+	
+	var _atelierPlateauLight = __webpack_require__(355);
+	
+	Object.defineProperty(exports, 'atelierPlateauLight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierPlateauLight).default;
+	  }
+	});
+	
+	var _atelierSavannaDark = __webpack_require__(356);
+	
+	Object.defineProperty(exports, 'atelierSavannaDark', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierSavannaDark).default;
+	  }
+	});
+	
+	var _atelierSavannaLight = __webpack_require__(357);
+	
+	Object.defineProperty(exports, 'atelierSavannaLight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierSavannaLight).default;
+	  }
+	});
+	
+	var _atelierSeasideDark = __webpack_require__(358);
+	
+	Object.defineProperty(exports, 'atelierSeasideDark', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierSeasideDark).default;
+	  }
+	});
+	
+	var _atelierSeasideLight = __webpack_require__(359);
+	
+	Object.defineProperty(exports, 'atelierSeasideLight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierSeasideLight).default;
+	  }
+	});
+	
+	var _atelierSulphurpoolDark = __webpack_require__(360);
+	
+	Object.defineProperty(exports, 'atelierSulphurpoolDark', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierSulphurpoolDark).default;
+	  }
+	});
+	
+	var _atelierSulphurpoolLight = __webpack_require__(361);
+	
+	Object.defineProperty(exports, 'atelierSulphurpoolLight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_atelierSulphurpoolLight).default;
+	  }
+	});
+	
+	var _brownPaper = __webpack_require__(362);
+	
+	Object.defineProperty(exports, 'brownPaper', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_brownPaper).default;
+	  }
+	});
+	
+	var _codepenEmbed = __webpack_require__(363);
+	
+	Object.defineProperty(exports, 'codepenEmbed', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_codepenEmbed).default;
+	  }
+	});
+	
+	var _colorBrewer = __webpack_require__(364);
+	
+	Object.defineProperty(exports, 'colorBrewer', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_colorBrewer).default;
+	  }
+	});
+	
+	var _dark = __webpack_require__(365);
+	
+	Object.defineProperty(exports, 'dark', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_dark).default;
+	  }
+	});
+	
+	var _darkula = __webpack_require__(366);
+	
+	Object.defineProperty(exports, 'darkula', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_darkula).default;
+	  }
+	});
+	
+	var _defaultStyle = __webpack_require__(367);
+	
+	Object.defineProperty(exports, 'defaultStyle', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_defaultStyle).default;
+	  }
+	});
+	
+	var _docco = __webpack_require__(368);
+	
+	Object.defineProperty(exports, 'docco', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_docco).default;
+	  }
+	});
+	
+	var _dracula = __webpack_require__(369);
+	
+	Object.defineProperty(exports, 'dracula', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_dracula).default;
+	  }
+	});
+	
+	var _far = __webpack_require__(370);
+	
+	Object.defineProperty(exports, 'far', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_far).default;
+	  }
+	});
+	
+	var _foundation = __webpack_require__(371);
+	
+	Object.defineProperty(exports, 'foundation', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_foundation).default;
+	  }
+	});
+	
+	var _githubGist = __webpack_require__(372);
+	
+	Object.defineProperty(exports, 'githubGist', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_githubGist).default;
+	  }
+	});
+	
+	var _github = __webpack_require__(373);
+	
+	Object.defineProperty(exports, 'github', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_github).default;
+	  }
+	});
+	
+	var _googlecode = __webpack_require__(374);
+	
+	Object.defineProperty(exports, 'googlecode', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_googlecode).default;
+	  }
+	});
+	
+	var _grayscale = __webpack_require__(375);
+	
+	Object.defineProperty(exports, 'grayscale', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_grayscale).default;
+	  }
+	});
+	
+	var _gruvboxDark = __webpack_require__(376);
+	
+	Object.defineProperty(exports, 'gruvboxDark', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_gruvboxDark).default;
+	  }
+	});
+	
+	var _gruvboxLight = __webpack_require__(377);
+	
+	Object.defineProperty(exports, 'gruvboxLight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_gruvboxLight).default;
+	  }
+	});
+	
+	var _hopscotch = __webpack_require__(378);
+	
+	Object.defineProperty(exports, 'hopscotch', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_hopscotch).default;
+	  }
+	});
+	
+	var _hybrid = __webpack_require__(379);
+	
+	Object.defineProperty(exports, 'hybrid', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_hybrid).default;
+	  }
+	});
+	
+	var _idea = __webpack_require__(380);
+	
+	Object.defineProperty(exports, 'idea', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_idea).default;
+	  }
+	});
+	
+	var _irBlack = __webpack_require__(381);
+	
+	Object.defineProperty(exports, 'irBlack', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_irBlack).default;
+	  }
+	});
+	
+	var _kimbie = __webpack_require__(382);
+	
+	Object.defineProperty(exports, 'kimbieDark', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_kimbie).default;
+	  }
+	});
+	
+	var _kimbie2 = __webpack_require__(383);
+	
+	Object.defineProperty(exports, 'kimbieLight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_kimbie2).default;
+	  }
+	});
+	
+	var _magula = __webpack_require__(384);
+	
+	Object.defineProperty(exports, 'magula', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_magula).default;
+	  }
+	});
+	
+	var _monoBlue = __webpack_require__(385);
+	
+	Object.defineProperty(exports, 'monoBlue', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_monoBlue).default;
+	  }
+	});
+	
+	var _monokaiSublime = __webpack_require__(386);
+	
+	Object.defineProperty(exports, 'monokaiSublime', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_monokaiSublime).default;
+	  }
+	});
+	
+	var _monokai = __webpack_require__(387);
+	
+	Object.defineProperty(exports, 'monokai', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_monokai).default;
+	  }
+	});
+	
+	var _obsidian = __webpack_require__(388);
+	
+	Object.defineProperty(exports, 'obsidian', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_obsidian).default;
+	  }
+	});
+	
+	var _paraisoDark = __webpack_require__(389);
+	
+	Object.defineProperty(exports, 'paraisoDark', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_paraisoDark).default;
+	  }
+	});
+	
+	var _paraisoLight = __webpack_require__(390);
+	
+	Object.defineProperty(exports, 'paraisoLight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_paraisoLight).default;
+	  }
+	});
+	
+	var _pojoaque = __webpack_require__(391);
+	
+	Object.defineProperty(exports, 'pojoaque', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_pojoaque).default;
+	  }
+	});
+	
+	var _qtcreator_dark = __webpack_require__(392);
+	
+	Object.defineProperty(exports, 'qtcreatorDark', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_qtcreator_dark).default;
+	  }
+	});
+	
+	var _qtcreator_light = __webpack_require__(393);
+	
+	Object.defineProperty(exports, 'qtcreatorLight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_qtcreator_light).default;
+	  }
+	});
+	
+	var _railscasts = __webpack_require__(394);
+	
+	Object.defineProperty(exports, 'railscasts', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_railscasts).default;
+	  }
+	});
+	
+	var _rainbow = __webpack_require__(395);
+	
+	Object.defineProperty(exports, 'rainbow', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_rainbow).default;
+	  }
+	});
+	
+	var _schoolBook = __webpack_require__(396);
+	
+	Object.defineProperty(exports, 'schoolBook', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_schoolBook).default;
+	  }
+	});
+	
+	var _solarizedDark = __webpack_require__(397);
+	
+	Object.defineProperty(exports, 'solarizedDark', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_solarizedDark).default;
+	  }
+	});
+	
+	var _solarizedLight = __webpack_require__(398);
+	
+	Object.defineProperty(exports, 'solarizedLight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_solarizedLight).default;
+	  }
+	});
+	
+	var _sunburst = __webpack_require__(399);
+	
+	Object.defineProperty(exports, 'sunburst', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_sunburst).default;
+	  }
+	});
+	
+	var _tomorrowNightBlue = __webpack_require__(400);
+	
+	Object.defineProperty(exports, 'tomorrowNightBlue', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_tomorrowNightBlue).default;
+	  }
+	});
+	
+	var _tomorrowNightBright = __webpack_require__(401);
+	
+	Object.defineProperty(exports, 'tomorrowNightBright', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_tomorrowNightBright).default;
+	  }
+	});
+	
+	var _tomorrowNightEighties = __webpack_require__(402);
+	
+	Object.defineProperty(exports, 'tomorrowNightEighties', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_tomorrowNightEighties).default;
+	  }
+	});
+	
+	var _tomorrowNight = __webpack_require__(403);
+	
+	Object.defineProperty(exports, 'tomorrowNight', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_tomorrowNight).default;
+	  }
+	});
+	
+	var _tomorrow = __webpack_require__(404);
+	
+	Object.defineProperty(exports, 'tomorrow', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_tomorrow).default;
+	  }
+	});
+	
+	var _vs = __webpack_require__(405);
+	
+	Object.defineProperty(exports, 'vs', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_vs).default;
+	  }
+	});
+	
+	var _xcode = __webpack_require__(406);
+	
+	Object.defineProperty(exports, 'xcode', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_xcode).default;
+	  }
+	});
+	
+	var _zenburn = __webpack_require__(407);
+	
+	Object.defineProperty(exports, 'zenburn', {
+	  enumerable: true,
+	  get: function get() {
+	    return _interopRequireDefault(_zenburn).default;
+	  }
+	});
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/***/ },
+/* 337 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#ffa"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "background": "#333",
+	        "color": "white"
+	    },
+	    "hljs-string": {
+	        "color": "#a2fca2"
+	    },
+	    "hljs-regexp": {
+	        "color": "#c6b4f0"
+	    },
+	    "hljs-meta": {
+	        "color": "#fc9b9b"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#ffa"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-type": {
+	        "color": "#ffa"
+	    },
+	    "hljs-section": {
+	        "color": "#ffa"
+	    },
+	    "hljs-deletion": {
+	        "backgroundColor": "#fc9b9b",
+	        "color": "#333"
+	    },
+	    "hljs-addition": {
+	        "backgroundColor": "#a2fca2",
+	        "color": "#333"
+	    },
+	    "hljs-name": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-variable": {
+	        "color": "#ade5fc"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#fcc28c"
+	    },
+	    "hljs-bullet": {
+	        "color": "#d36363"
+	    },
+	    "hljs-code": {
+	        "color": "#888"
+	    },
+	    "hljs-number": {
+	        "color": "#d36363"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#ade5fc"
+	    },
+	    "hljs-symbol": {
+	        "color": "#d36363"
+	    },
+	    "hljs-attribute": {
+	        "color": "#ffa"
+	    },
+	    "hljs-tag": {
+	        "color": "#62c8f3"
+	    },
+	    "hljs-keyword": {
+	        "color": "#fcc28c"
+	    },
+	    "hljs-literal": {
+	        "color": "#fcc28c"
+	    },
+	    "hljs-quote": {
+	        "color": "#ffa"
+	    },
+	    "hljs-comment": {
+	        "color": "#888"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#ade5fc"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#ade5fc"
+	    },
+	    "hljs-built_in": {
+	        "color": "#ffa"
+	    },
+	    "hljs-link": {
+	        "color": "#c6b4f0"
+	    }
+	};
+
+/***/ },
+/* 338 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#ffc66d"
+	    },
+	    "hljs": {
+	        "color": "#a9b7c6",
+	        "background": "#282b2e",
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em"
+	    },
+	    "hljs-string": {
+	        "color": "#6A8759"
+	    },
+	    "hljs-meta": {
+	        "color": "#bbb529"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-type": {
+	        "color": "#ffc66d"
+	    },
+	    "hljs-section": {
+	        "color": "#ffc66d"
+	    },
+	    "hljs-deletion": {
+	        "color": "#cc7832"
+	    },
+	    "hljs-addition": {
+	        "color": "#6A8759"
+	    },
+	    "hljs-bullet": {
+	        "color": "#6897BB"
+	    },
+	    "hljs-variable": {
+	        "color": "#629755"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#cc7832"
+	    },
+	    "hljs-name": {
+	        "color": "#e8bf6a"
+	    },
+	    "hljs-number": {
+	        "color": "#6897BB"
+	    },
+	    "hljs-symbol": {
+	        "color": "#6897BB"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#e8bf6a"
+	    },
+	    "hljs-attribute": {
+	        "color": "#6A8759"
+	    },
+	    "hljs-keyword": {
+	        "color": "#cc7832"
+	    },
+	    "hljs-literal": {
+	        "color": "#6897BB"
+	    },
+	    "hljs-comment": {
+	        "color": "#808080"
+	    },
+	    "hljs-quote": {
+	        "color": "#808080"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#e8bf6a"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#629755"
+	    },
+	    "hljs-link": {
+	        "color": "#629755"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 339 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#00979D"
+	    },
+	    "hljs-title": {
+	        "color": "#880000",
+	        "fontWeight": "bold"
+	    },
+	    "hljs": {
+	        "color": "#434f54"
+	    },
+	    "hljs-regexp": {
+	        "color": "#00979D"
+	    },
+	    "hljs-string": {
+	        "color": "#005C5F"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#005C5F"
+	    },
+	    "hljs-meta": {
+	        "color": "#434f54"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-type": {
+	        "color": "#005C5F"
+	    },
+	    "hljs-section": {
+	        "color": "#880000",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-deletion": {
+	        "color": "#005C5F"
+	    },
+	    "hljs-subst": {
+	        "color": "#434f54"
+	    },
+	    "hljs-addition": {
+	        "color": "#D35400"
+	    },
+	    "hljs-name": {
+	        "color": "#00979D"
+	    },
+	    "hljs-bullet": {
+	        "color": "#D35400"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#00979D"
+	    },
+	    "hljs-meta-keyword": {
+	        "color": "#728E00"
+	    },
+	    "hljs-code": {
+	        "color": "#D35400"
+	    },
+	    "hljs-variable": {
+	        "color": "#00979D"
+	    },
+	    "hljs-symbol": {
+	        "color": "#00979D"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#005C5F"
+	    },
+	    "hljs-attribute": {
+	        "color": "#00979D"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#00979D"
+	    },
+	    "hljs-keyword": {
+	        "color": "#00979D"
+	    },
+	    "hljs-literal": {
+	        "color": "#D35400"
+	    },
+	    "hljs-quote": {
+	        "color": "#005C5F"
+	    },
+	    "hljs-comment": {
+	        "color": "rgba(149,165,166,.8)"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#005C5F"
+	    },
+	    "hljs-function": {
+	        "color": "#728E00"
+	    },
+	    "hljs-doctag": {
+	        "color": "#00979D"
+	    },
+	    "hljs-built_in": {
+	        "color": "#D35400"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#00979D"
+	    },
+	    "hljs-link": {
+	        "color": "#00979D"
+	    },
+	    "hljs-number": {
+	        "color": "#8A7B52"
+	    }
+	};
+
+/***/ },
+/* 340 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#bb1166"
+	    },
+	    "hljs": {
+	        "color": "#aaa"
+	    },
+	    "hljs-string": {
+	        "color": "#ffcc33"
+	    },
+	    "hljs-meta": {
+	        "color": "#444"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#bb1166"
+	    },
+	    "hljs-regexp": {
+	        "color": "#ffcc33"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#32aaee"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-type": {
+	        "color": "#32aaee"
+	    },
+	    "hljs-section": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-deletion": {
+	        "color": "#bb1166"
+	    },
+	    "hljs-subst": {
+	        "color": "#aaa"
+	    },
+	    "hljs-addition": {
+	        "color": "#00cc66"
+	    },
+	    "hljs-bullet": {
+	        "color": "#ffcc33"
+	    },
+	    "hljs-name": {
+	        "color": "#6644aa"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#6644aa"
+	    },
+	    "hljs-variable": {
+	        "color": "#bb1166"
+	    },
+	    "hljs-number": {
+	        "color": "#00cc66"
+	    },
+	    "hljs-symbol": {
+	        "color": "#ffcc33"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#6644aa"
+	    },
+	    "hljs-attribute": {
+	        "color": "#32aaee"
+	    },
+	    "hljs-keyword": {
+	        "color": "#6644aa"
+	    },
+	    "hljs-literal": {
+	        "color": "#32aaee"
+	    },
+	    "hljs-comment": {
+	        "color": "#444"
+	    },
+	    "hljs-quote": {
+	        "color": "#444"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#6644aa"
+	    },
+	    "hljs-doctag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-built_in": {
+	        "color": "#32aaee"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#32aaee"
+	    },
+	    "hljs-link": {
+	        "color": "#32aaee"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    }
+	};
+
+/***/ },
+/* 341 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "background": "white",
+	        "color": "black"
+	    },
+	    "hljs-string": {
+	        "color": "#888"
+	    },
+	    "hljs-variable": {
+	        "color": "#888"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#888"
+	    },
+	    "hljs-symbol": {
+	        "color": "#888"
+	    },
+	    "hljs-bullet": {
+	        "color": "#888"
+	    },
+	    "hljs-section": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-addition": {
+	        "color": "#888"
+	    },
+	    "hljs-attribute": {
+	        "color": "#888"
+	    },
+	    "hljs-link": {
+	        "color": "#888"
+	    },
+	    "hljs-comment": {
+	        "color": "#ccc"
+	    },
+	    "hljs-quote": {
+	        "color": "#ccc"
+	    },
+	    "hljs-meta": {
+	        "color": "#ccc"
+	    },
+	    "hljs-deletion": {
+	        "color": "#ccc"
+	    },
+	    "hljs-keyword": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-selector-tag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-name": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-type": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    }
+	};
+
+/***/ },
+/* 342 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#576ddb"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#19171c",
+	        "color": "#8b8792",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#be4678"
+	    },
+	    "hljs-meta": {
+	        "color": "#aa573c"
+	    },
+	    "hljs-string": {
+	        "color": "#2a9292"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#aa573c"
+	    },
+	    "hljs-type": {
+	        "color": "#aa573c"
+	    },
+	    "hljs-section": {
+	        "color": "#576ddb"
+	    },
+	    "hljs-deletion": {
+	        "backgroundColor": "#be4678"
+	    },
+	    "hljs-addition": {
+	        "backgroundColor": "#2a9292"
+	    },
+	    "hljs-name": {
+	        "color": "#be4678"
+	    },
+	    "hljs-variable": {
+	        "color": "#be4678"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#955ae7"
+	    },
+	    "hljs-bullet": {
+	        "color": "#2a9292"
+	    },
+	    "hljs-params": {
+	        "color": "#aa573c"
+	    },
+	    "hljs-number": {
+	        "color": "#aa573c"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#be4678"
+	    },
+	    "hljs-symbol": {
+	        "color": "#2a9292"
+	    },
+	    "hljs-attribute": {
+	        "color": "#be4678"
+	    },
+	    "hljs-tag": {
+	        "color": "#be4678"
+	    },
+	    "hljs-keyword": {
+	        "color": "#955ae7"
+	    },
+	    "hljs-literal": {
+	        "color": "#aa573c"
+	    },
+	    "hljs-comment": {
+	        "color": "#7e7887"
+	    },
+	    "hljs-quote": {
+	        "color": "#7e7887"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#be4678"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#be4678"
+	    },
+	    "hljs-built_in": {
+	        "color": "#aa573c"
+	    },
+	    "hljs-link": {
+	        "color": "#be4678"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 343 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#576ddb"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#efecf4",
+	        "color": "#585260",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#be4678"
+	    },
+	    "hljs-meta": {
+	        "color": "#aa573c"
+	    },
+	    "hljs-string": {
+	        "color": "#2a9292"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#aa573c"
+	    },
+	    "hljs-type": {
+	        "color": "#aa573c"
+	    },
+	    "hljs-section": {
+	        "color": "#576ddb"
+	    },
+	    "hljs-deletion": {
+	        "backgroundColor": "#be4678"
+	    },
+	    "hljs-addition": {
+	        "backgroundColor": "#2a9292"
+	    },
+	    "hljs-name": {
+	        "color": "#be4678"
+	    },
+	    "hljs-variable": {
+	        "color": "#be4678"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#955ae7"
+	    },
+	    "hljs-bullet": {
+	        "color": "#2a9292"
+	    },
+	    "hljs-params": {
+	        "color": "#aa573c"
+	    },
+	    "hljs-number": {
+	        "color": "#aa573c"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#be4678"
+	    },
+	    "hljs-symbol": {
+	        "color": "#2a9292"
+	    },
+	    "hljs-attribute": {
+	        "color": "#be4678"
+	    },
+	    "hljs-tag": {
+	        "color": "#be4678"
+	    },
+	    "hljs-keyword": {
+	        "color": "#955ae7"
+	    },
+	    "hljs-literal": {
+	        "color": "#aa573c"
+	    },
+	    "hljs-comment": {
+	        "color": "#655f6d"
+	    },
+	    "hljs-quote": {
+	        "color": "#655f6d"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#be4678"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#be4678"
+	    },
+	    "hljs-built_in": {
+	        "color": "#aa573c"
+	    },
+	    "hljs-link": {
+	        "color": "#be4678"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 344 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#6684e1"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#20201d",
+	        "color": "#a6a28c",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#d73737"
+	    },
+	    "hljs-meta": {
+	        "color": "#b65611"
+	    },
+	    "hljs-string": {
+	        "color": "#60ac39"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#b65611"
+	    },
+	    "hljs-type": {
+	        "color": "#b65611"
+	    },
+	    "hljs-section": {
+	        "color": "#6684e1"
+	    },
+	    "hljs-name": {
+	        "color": "#d73737"
+	    },
+	    "hljs-variable": {
+	        "color": "#d73737"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#b854d4"
+	    },
+	    "hljs-bullet": {
+	        "color": "#60ac39"
+	    },
+	    "hljs-params": {
+	        "color": "#b65611"
+	    },
+	    "hljs-number": {
+	        "color": "#b65611"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#d73737"
+	    },
+	    "hljs-symbol": {
+	        "color": "#60ac39"
+	    },
+	    "hljs-attribute": {
+	        "color": "#d73737"
+	    },
+	    "hljs-tag": {
+	        "color": "#d73737"
+	    },
+	    "hljs-keyword": {
+	        "color": "#b854d4"
+	    },
+	    "hljs-literal": {
+	        "color": "#b65611"
+	    },
+	    "hljs-comment": {
+	        "color": "#999580"
+	    },
+	    "hljs-quote": {
+	        "color": "#999580"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#d73737"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#d73737"
+	    },
+	    "hljs-built_in": {
+	        "color": "#b65611"
+	    },
+	    "hljs-link": {
+	        "color": "#d73737"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 345 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#6684e1"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#fefbec",
+	        "color": "#6e6b5e",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#d73737"
+	    },
+	    "hljs-meta": {
+	        "color": "#b65611"
+	    },
+	    "hljs-string": {
+	        "color": "#60ac39"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#b65611"
+	    },
+	    "hljs-type": {
+	        "color": "#b65611"
+	    },
+	    "hljs-section": {
+	        "color": "#6684e1"
+	    },
+	    "hljs-name": {
+	        "color": "#d73737"
+	    },
+	    "hljs-variable": {
+	        "color": "#d73737"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#b854d4"
+	    },
+	    "hljs-bullet": {
+	        "color": "#60ac39"
+	    },
+	    "hljs-params": {
+	        "color": "#b65611"
+	    },
+	    "hljs-number": {
+	        "color": "#b65611"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#d73737"
+	    },
+	    "hljs-symbol": {
+	        "color": "#60ac39"
+	    },
+	    "hljs-attribute": {
+	        "color": "#d73737"
+	    },
+	    "hljs-tag": {
+	        "color": "#d73737"
+	    },
+	    "hljs-keyword": {
+	        "color": "#b854d4"
+	    },
+	    "hljs-literal": {
+	        "color": "#b65611"
+	    },
+	    "hljs-comment": {
+	        "color": "#7d7a68"
+	    },
+	    "hljs-quote": {
+	        "color": "#7d7a68"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#d73737"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#d73737"
+	    },
+	    "hljs-built_in": {
+	        "color": "#b65611"
+	    },
+	    "hljs-link": {
+	        "color": "#d73737"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 346 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#36a166"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#22221b",
+	        "color": "#929181",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-meta": {
+	        "color": "#ae7313"
+	    },
+	    "hljs-string": {
+	        "color": "#7d9726"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#ae7313"
+	    },
+	    "hljs-type": {
+	        "color": "#ae7313"
+	    },
+	    "hljs-section": {
+	        "color": "#36a166"
+	    },
+	    "hljs-deletion": {
+	        "backgroundColor": "#ba6236"
+	    },
+	    "hljs-addition": {
+	        "backgroundColor": "#7d9726"
+	    },
+	    "hljs-name": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-variable": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#5f9182"
+	    },
+	    "hljs-bullet": {
+	        "color": "#7d9726"
+	    },
+	    "hljs-params": {
+	        "color": "#ae7313"
+	    },
+	    "hljs-number": {
+	        "color": "#ae7313"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-symbol": {
+	        "color": "#7d9726"
+	    },
+	    "hljs-attribute": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-tag": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-keyword": {
+	        "color": "#5f9182"
+	    },
+	    "hljs-literal": {
+	        "color": "#ae7313"
+	    },
+	    "hljs-comment": {
+	        "color": "#878573"
+	    },
+	    "hljs-quote": {
+	        "color": "#878573"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-built_in": {
+	        "color": "#ae7313"
+	    },
+	    "hljs-link": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 347 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#36a166"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#f4f3ec",
+	        "color": "#5f5e4e",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-meta": {
+	        "color": "#ae7313"
+	    },
+	    "hljs-string": {
+	        "color": "#7d9726"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#ae7313"
+	    },
+	    "hljs-type": {
+	        "color": "#ae7313"
+	    },
+	    "hljs-section": {
+	        "color": "#36a166"
+	    },
+	    "hljs-deletion": {
+	        "backgroundColor": "#ba6236"
+	    },
+	    "hljs-addition": {
+	        "backgroundColor": "#7d9726"
+	    },
+	    "hljs-name": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-variable": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#5f9182"
+	    },
+	    "hljs-bullet": {
+	        "color": "#7d9726"
+	    },
+	    "hljs-params": {
+	        "color": "#ae7313"
+	    },
+	    "hljs-number": {
+	        "color": "#ae7313"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-symbol": {
+	        "color": "#7d9726"
+	    },
+	    "hljs-attribute": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-tag": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-keyword": {
+	        "color": "#5f9182"
+	    },
+	    "hljs-literal": {
+	        "color": "#ae7313"
+	    },
+	    "hljs-comment": {
+	        "color": "#6c6b5a"
+	    },
+	    "hljs-quote": {
+	        "color": "#6c6b5a"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-built_in": {
+	        "color": "#ae7313"
+	    },
+	    "hljs-link": {
+	        "color": "#ba6236"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 348 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#407ee7"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#1b1918",
+	        "color": "#a8a19f",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-meta": {
+	        "color": "#df5320"
+	    },
+	    "hljs-string": {
+	        "color": "#7b9726"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#df5320"
+	    },
+	    "hljs-type": {
+	        "color": "#df5320"
+	    },
+	    "hljs-section": {
+	        "color": "#407ee7"
+	    },
+	    "hljs-name": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-variable": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#6666ea"
+	    },
+	    "hljs-bullet": {
+	        "color": "#7b9726"
+	    },
+	    "hljs-params": {
+	        "color": "#df5320"
+	    },
+	    "hljs-number": {
+	        "color": "#df5320"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-symbol": {
+	        "color": "#7b9726"
+	    },
+	    "hljs-attribute": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-tag": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-keyword": {
+	        "color": "#6666ea"
+	    },
+	    "hljs-literal": {
+	        "color": "#df5320"
+	    },
+	    "hljs-comment": {
+	        "color": "#9c9491"
+	    },
+	    "hljs-quote": {
+	        "color": "#9c9491"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-built_in": {
+	        "color": "#df5320"
+	    },
+	    "hljs-link": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 349 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#407ee7"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#f1efee",
+	        "color": "#68615e",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-meta": {
+	        "color": "#df5320"
+	    },
+	    "hljs-string": {
+	        "color": "#7b9726"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#df5320"
+	    },
+	    "hljs-type": {
+	        "color": "#df5320"
+	    },
+	    "hljs-section": {
+	        "color": "#407ee7"
+	    },
+	    "hljs-name": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-variable": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#6666ea"
+	    },
+	    "hljs-bullet": {
+	        "color": "#7b9726"
+	    },
+	    "hljs-params": {
+	        "color": "#df5320"
+	    },
+	    "hljs-number": {
+	        "color": "#df5320"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-symbol": {
+	        "color": "#7b9726"
+	    },
+	    "hljs-attribute": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-tag": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-keyword": {
+	        "color": "#6666ea"
+	    },
+	    "hljs-literal": {
+	        "color": "#df5320"
+	    },
+	    "hljs-comment": {
+	        "color": "#766e6b"
+	    },
+	    "hljs-quote": {
+	        "color": "#766e6b"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-built_in": {
+	        "color": "#df5320"
+	    },
+	    "hljs-link": {
+	        "color": "#f22c40"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 350 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#516aec"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#1b181b",
+	        "color": "#ab9bab",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-meta": {
+	        "color": "#a65926"
+	    },
+	    "hljs-string": {
+	        "color": "#918b3b"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#a65926"
+	    },
+	    "hljs-type": {
+	        "color": "#a65926"
+	    },
+	    "hljs-section": {
+	        "color": "#516aec"
+	    },
+	    "hljs-name": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-variable": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#7b59c0"
+	    },
+	    "hljs-bullet": {
+	        "color": "#918b3b"
+	    },
+	    "hljs-params": {
+	        "color": "#a65926"
+	    },
+	    "hljs-number": {
+	        "color": "#a65926"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-symbol": {
+	        "color": "#918b3b"
+	    },
+	    "hljs-attribute": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-tag": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-keyword": {
+	        "color": "#7b59c0"
+	    },
+	    "hljs-literal": {
+	        "color": "#a65926"
+	    },
+	    "hljs-comment": {
+	        "color": "#9e8f9e"
+	    },
+	    "hljs-quote": {
+	        "color": "#9e8f9e"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-built_in": {
+	        "color": "#a65926"
+	    },
+	    "hljs-link": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 351 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#516aec"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#f7f3f7",
+	        "color": "#695d69",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-meta": {
+	        "color": "#a65926"
+	    },
+	    "hljs-string": {
+	        "color": "#918b3b"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#a65926"
+	    },
+	    "hljs-type": {
+	        "color": "#a65926"
+	    },
+	    "hljs-section": {
+	        "color": "#516aec"
+	    },
+	    "hljs-name": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-variable": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#7b59c0"
+	    },
+	    "hljs-bullet": {
+	        "color": "#918b3b"
+	    },
+	    "hljs-params": {
+	        "color": "#a65926"
+	    },
+	    "hljs-number": {
+	        "color": "#a65926"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-symbol": {
+	        "color": "#918b3b"
+	    },
+	    "hljs-attribute": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-tag": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-keyword": {
+	        "color": "#7b59c0"
+	    },
+	    "hljs-literal": {
+	        "color": "#a65926"
+	    },
+	    "hljs-comment": {
+	        "color": "#776977"
+	    },
+	    "hljs-quote": {
+	        "color": "#776977"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-built_in": {
+	        "color": "#a65926"
+	    },
+	    "hljs-link": {
+	        "color": "#ca402b"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 352 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#257fad"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#161b1d",
+	        "color": "#7ea2b4",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-meta": {
+	        "color": "#935c25"
+	    },
+	    "hljs-string": {
+	        "color": "#568c3b"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#935c25"
+	    },
+	    "hljs-type": {
+	        "color": "#935c25"
+	    },
+	    "hljs-section": {
+	        "color": "#257fad"
+	    },
+	    "hljs-name": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-variable": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#6b6bb8"
+	    },
+	    "hljs-bullet": {
+	        "color": "#568c3b"
+	    },
+	    "hljs-params": {
+	        "color": "#935c25"
+	    },
+	    "hljs-number": {
+	        "color": "#935c25"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-symbol": {
+	        "color": "#568c3b"
+	    },
+	    "hljs-attribute": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-tag": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-keyword": {
+	        "color": "#6b6bb8"
+	    },
+	    "hljs-literal": {
+	        "color": "#935c25"
+	    },
+	    "hljs-comment": {
+	        "color": "#7195a8"
+	    },
+	    "hljs-quote": {
+	        "color": "#7195a8"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-built_in": {
+	        "color": "#935c25"
+	    },
+	    "hljs-link": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 353 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#257fad"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#ebf8ff",
+	        "color": "#516d7b",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-meta": {
+	        "color": "#935c25"
+	    },
+	    "hljs-string": {
+	        "color": "#568c3b"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#935c25"
+	    },
+	    "hljs-type": {
+	        "color": "#935c25"
+	    },
+	    "hljs-section": {
+	        "color": "#257fad"
+	    },
+	    "hljs-name": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-variable": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#6b6bb8"
+	    },
+	    "hljs-bullet": {
+	        "color": "#568c3b"
+	    },
+	    "hljs-params": {
+	        "color": "#935c25"
+	    },
+	    "hljs-number": {
+	        "color": "#935c25"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-symbol": {
+	        "color": "#568c3b"
+	    },
+	    "hljs-attribute": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-tag": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-keyword": {
+	        "color": "#6b6bb8"
+	    },
+	    "hljs-literal": {
+	        "color": "#935c25"
+	    },
+	    "hljs-comment": {
+	        "color": "#5a7b8c"
+	    },
+	    "hljs-quote": {
+	        "color": "#5a7b8c"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-built_in": {
+	        "color": "#935c25"
+	    },
+	    "hljs-link": {
+	        "color": "#d22d72"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 354 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#7272ca"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#1b1818",
+	        "color": "#8a8585",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-meta": {
+	        "color": "#b45a3c"
+	    },
+	    "hljs-string": {
+	        "color": "#4b8b8b"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#b45a3c"
+	    },
+	    "hljs-type": {
+	        "color": "#b45a3c"
+	    },
+	    "hljs-section": {
+	        "color": "#7272ca"
+	    },
+	    "hljs-deletion": {
+	        "backgroundColor": "#ca4949"
+	    },
+	    "hljs-addition": {
+	        "backgroundColor": "#4b8b8b"
+	    },
+	    "hljs-name": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-variable": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#8464c4"
+	    },
+	    "hljs-bullet": {
+	        "color": "#4b8b8b"
+	    },
+	    "hljs-params": {
+	        "color": "#b45a3c"
+	    },
+	    "hljs-number": {
+	        "color": "#b45a3c"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-symbol": {
+	        "color": "#4b8b8b"
+	    },
+	    "hljs-attribute": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-tag": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-keyword": {
+	        "color": "#8464c4"
+	    },
+	    "hljs-literal": {
+	        "color": "#b45a3c"
+	    },
+	    "hljs-comment": {
+	        "color": "#7e7777"
+	    },
+	    "hljs-quote": {
+	        "color": "#7e7777"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-built_in": {
+	        "color": "#b45a3c"
+	    },
+	    "hljs-link": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 355 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#7272ca"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#f4ecec",
+	        "color": "#585050",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-meta": {
+	        "color": "#b45a3c"
+	    },
+	    "hljs-string": {
+	        "color": "#4b8b8b"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#b45a3c"
+	    },
+	    "hljs-type": {
+	        "color": "#b45a3c"
+	    },
+	    "hljs-section": {
+	        "color": "#7272ca"
+	    },
+	    "hljs-deletion": {
+	        "backgroundColor": "#ca4949"
+	    },
+	    "hljs-addition": {
+	        "backgroundColor": "#4b8b8b"
+	    },
+	    "hljs-name": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-variable": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#8464c4"
+	    },
+	    "hljs-bullet": {
+	        "color": "#4b8b8b"
+	    },
+	    "hljs-params": {
+	        "color": "#b45a3c"
+	    },
+	    "hljs-number": {
+	        "color": "#b45a3c"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-symbol": {
+	        "color": "#4b8b8b"
+	    },
+	    "hljs-attribute": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-tag": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-keyword": {
+	        "color": "#8464c4"
+	    },
+	    "hljs-literal": {
+	        "color": "#b45a3c"
+	    },
+	    "hljs-comment": {
+	        "color": "#655d5d"
+	    },
+	    "hljs-quote": {
+	        "color": "#655d5d"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-built_in": {
+	        "color": "#b45a3c"
+	    },
+	    "hljs-link": {
+	        "color": "#ca4949"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 356 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#478c90"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#171c19",
+	        "color": "#87928a",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#b16139"
+	    },
+	    "hljs-meta": {
+	        "color": "#9f713c"
+	    },
+	    "hljs-string": {
+	        "color": "#489963"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#9f713c"
+	    },
+	    "hljs-type": {
+	        "color": "#9f713c"
+	    },
+	    "hljs-section": {
+	        "color": "#478c90"
+	    },
+	    "hljs-deletion": {
+	        "backgroundColor": "#b16139"
+	    },
+	    "hljs-addition": {
+	        "backgroundColor": "#489963"
+	    },
+	    "hljs-name": {
+	        "color": "#b16139"
+	    },
+	    "hljs-variable": {
+	        "color": "#b16139"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#55859b"
+	    },
+	    "hljs-bullet": {
+	        "color": "#489963"
+	    },
+	    "hljs-params": {
+	        "color": "#9f713c"
+	    },
+	    "hljs-number": {
+	        "color": "#9f713c"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#b16139"
+	    },
+	    "hljs-symbol": {
+	        "color": "#489963"
+	    },
+	    "hljs-attribute": {
+	        "color": "#b16139"
+	    },
+	    "hljs-tag": {
+	        "color": "#b16139"
+	    },
+	    "hljs-keyword": {
+	        "color": "#55859b"
+	    },
+	    "hljs-literal": {
+	        "color": "#9f713c"
+	    },
+	    "hljs-comment": {
+	        "color": "#78877d"
+	    },
+	    "hljs-quote": {
+	        "color": "#78877d"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#b16139"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#b16139"
+	    },
+	    "hljs-built_in": {
+	        "color": "#9f713c"
+	    },
+	    "hljs-link": {
+	        "color": "#b16139"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 357 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#478c90"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#ecf4ee",
+	        "color": "#526057",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#b16139"
+	    },
+	    "hljs-meta": {
+	        "color": "#9f713c"
+	    },
+	    "hljs-string": {
+	        "color": "#489963"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#9f713c"
+	    },
+	    "hljs-type": {
+	        "color": "#9f713c"
+	    },
+	    "hljs-section": {
+	        "color": "#478c90"
+	    },
+	    "hljs-deletion": {
+	        "backgroundColor": "#b16139"
+	    },
+	    "hljs-addition": {
+	        "backgroundColor": "#489963"
+	    },
+	    "hljs-name": {
+	        "color": "#b16139"
+	    },
+	    "hljs-variable": {
+	        "color": "#b16139"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#55859b"
+	    },
+	    "hljs-bullet": {
+	        "color": "#489963"
+	    },
+	    "hljs-params": {
+	        "color": "#9f713c"
+	    },
+	    "hljs-number": {
+	        "color": "#9f713c"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#b16139"
+	    },
+	    "hljs-symbol": {
+	        "color": "#489963"
+	    },
+	    "hljs-attribute": {
+	        "color": "#b16139"
+	    },
+	    "hljs-tag": {
+	        "color": "#b16139"
+	    },
+	    "hljs-keyword": {
+	        "color": "#55859b"
+	    },
+	    "hljs-literal": {
+	        "color": "#9f713c"
+	    },
+	    "hljs-comment": {
+	        "color": "#5f6d64"
+	    },
+	    "hljs-quote": {
+	        "color": "#5f6d64"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#b16139"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#b16139"
+	    },
+	    "hljs-built_in": {
+	        "color": "#9f713c"
+	    },
+	    "hljs-link": {
+	        "color": "#b16139"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 358 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#3d62f5"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#131513",
+	        "color": "#8ca68c",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-meta": {
+	        "color": "#87711d"
+	    },
+	    "hljs-string": {
+	        "color": "#29a329"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#87711d"
+	    },
+	    "hljs-type": {
+	        "color": "#87711d"
+	    },
+	    "hljs-section": {
+	        "color": "#3d62f5"
+	    },
+	    "hljs-name": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-variable": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#ad2bee"
+	    },
+	    "hljs-bullet": {
+	        "color": "#29a329"
+	    },
+	    "hljs-params": {
+	        "color": "#87711d"
+	    },
+	    "hljs-number": {
+	        "color": "#87711d"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-symbol": {
+	        "color": "#29a329"
+	    },
+	    "hljs-attribute": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-tag": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-keyword": {
+	        "color": "#ad2bee"
+	    },
+	    "hljs-literal": {
+	        "color": "#87711d"
+	    },
+	    "hljs-comment": {
+	        "color": "#809980"
+	    },
+	    "hljs-quote": {
+	        "color": "#809980"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-built_in": {
+	        "color": "#87711d"
+	    },
+	    "hljs-link": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 359 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#3d62f5"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#f4fbf4",
+	        "color": "#5e6e5e",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-meta": {
+	        "color": "#87711d"
+	    },
+	    "hljs-string": {
+	        "color": "#29a329"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#87711d"
+	    },
+	    "hljs-type": {
+	        "color": "#87711d"
+	    },
+	    "hljs-section": {
+	        "color": "#3d62f5"
+	    },
+	    "hljs-name": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-variable": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#ad2bee"
+	    },
+	    "hljs-bullet": {
+	        "color": "#29a329"
+	    },
+	    "hljs-params": {
+	        "color": "#87711d"
+	    },
+	    "hljs-number": {
+	        "color": "#87711d"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-symbol": {
+	        "color": "#29a329"
+	    },
+	    "hljs-attribute": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-tag": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-keyword": {
+	        "color": "#ad2bee"
+	    },
+	    "hljs-literal": {
+	        "color": "#87711d"
+	    },
+	    "hljs-comment": {
+	        "color": "#687d68"
+	    },
+	    "hljs-quote": {
+	        "color": "#687d68"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-built_in": {
+	        "color": "#87711d"
+	    },
+	    "hljs-link": {
+	        "color": "#e6193c"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 360 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#3d8fd1"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#202746",
+	        "color": "#979db4",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#c94922"
+	    },
+	    "hljs-meta": {
+	        "color": "#c76b29"
+	    },
+	    "hljs-string": {
+	        "color": "#ac9739"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#c76b29"
+	    },
+	    "hljs-type": {
+	        "color": "#c76b29"
+	    },
+	    "hljs-section": {
+	        "color": "#3d8fd1"
+	    },
+	    "hljs-name": {
+	        "color": "#c94922"
+	    },
+	    "hljs-variable": {
+	        "color": "#c94922"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#6679cc"
+	    },
+	    "hljs-bullet": {
+	        "color": "#ac9739"
+	    },
+	    "hljs-params": {
+	        "color": "#c76b29"
+	    },
+	    "hljs-number": {
+	        "color": "#c76b29"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#c94922"
+	    },
+	    "hljs-symbol": {
+	        "color": "#ac9739"
+	    },
+	    "hljs-attribute": {
+	        "color": "#c94922"
+	    },
+	    "hljs-tag": {
+	        "color": "#c94922"
+	    },
+	    "hljs-keyword": {
+	        "color": "#6679cc"
+	    },
+	    "hljs-literal": {
+	        "color": "#c76b29"
+	    },
+	    "hljs-comment": {
+	        "color": "#898ea4"
+	    },
+	    "hljs-quote": {
+	        "color": "#898ea4"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#c94922"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#c94922"
+	    },
+	    "hljs-built_in": {
+	        "color": "#c76b29"
+	    },
+	    "hljs-link": {
+	        "color": "#c94922"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 361 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#3d8fd1"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#f5f7ff",
+	        "color": "#5e6687",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#c94922"
+	    },
+	    "hljs-meta": {
+	        "color": "#c76b29"
+	    },
+	    "hljs-string": {
+	        "color": "#ac9739"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#c76b29"
+	    },
+	    "hljs-type": {
+	        "color": "#c76b29"
+	    },
+	    "hljs-section": {
+	        "color": "#3d8fd1"
+	    },
+	    "hljs-name": {
+	        "color": "#c94922"
+	    },
+	    "hljs-variable": {
+	        "color": "#c94922"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#6679cc"
+	    },
+	    "hljs-bullet": {
+	        "color": "#ac9739"
+	    },
+	    "hljs-params": {
+	        "color": "#c76b29"
+	    },
+	    "hljs-number": {
+	        "color": "#c76b29"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#c94922"
+	    },
+	    "hljs-symbol": {
+	        "color": "#ac9739"
+	    },
+	    "hljs-attribute": {
+	        "color": "#c94922"
+	    },
+	    "hljs-tag": {
+	        "color": "#c94922"
+	    },
+	    "hljs-keyword": {
+	        "color": "#6679cc"
+	    },
+	    "hljs-literal": {
+	        "color": "#c76b29"
+	    },
+	    "hljs-comment": {
+	        "color": "#6b7394"
+	    },
+	    "hljs-quote": {
+	        "color": "#6b7394"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#c94922"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#c94922"
+	    },
+	    "hljs-built_in": {
+	        "color": "#c76b29"
+	    },
+	    "hljs-link": {
+	        "color": "#c94922"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 362 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs": {
+	        "color": "#363c69"
+	    },
+	    "hljs-string": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-meta": {
+	        "color": "#802022"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-type": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-section": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-deletion": {
+	        "color": "#802022"
+	    },
+	    "hljs-subst": {
+	        "color": "#363c69"
+	    },
+	    "hljs-addition": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-bullet": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-variable": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-selector-tag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-name": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-symbol": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-attribute": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-keyword": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-literal": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-comment": {
+	        "color": "#802022"
+	    },
+	    "hljs-quote": {
+	        "color": "#802022"
+	    },
+	    "hljs-doctag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-built_in": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-link": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    }
+	};
+
+/***/ },
+/* 363 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#9b869b"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "background": "#222",
+	        "color": "#fff"
+	    },
+	    "hljs-regexp": {
+	        "color": "#ab875d"
+	    },
+	    "hljs-meta": {
+	        "color": "#ab875d"
+	    },
+	    "hljs-string": {
+	        "color": "#8f9c6c"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#ab875d"
+	    },
+	    "hljs-type": {
+	        "color": "#9b869b"
+	    },
+	    "hljs-section": {
+	        "color": "#9b869b"
+	    },
+	    "hljs-deletion": {
+	        "color": "#ab875d"
+	    },
+	    "hljs-addition": {
+	        "color": "#8f9c6c"
+	    },
+	    "hljs-bullet": {
+	        "color": "#ab875d"
+	    },
+	    "hljs-variable": {
+	        "color": "#ab875d"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#8f9c6c"
+	    },
+	    "hljs-name": {
+	        "color": "#9b869b"
+	    },
+	    "hljs-params": {
+	        "color": "#ab875d"
+	    },
+	    "hljs-number": {
+	        "color": "#ab875d"
+	    },
+	    "hljs-symbol": {
+	        "color": "#ab875d"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#9b869b"
+	    },
+	    "hljs-attribute": {
+	        "color": "#9b869b"
+	    },
+	    "hljs-tag": {
+	        "color": "#ab875d"
+	    },
+	    "hljs-keyword": {
+	        "color": "#8f9c6c"
+	    },
+	    "hljs-literal": {
+	        "color": "#ab875d"
+	    },
+	    "hljs-comment": {
+	        "color": "#777"
+	    },
+	    "hljs-quote": {
+	        "color": "#777"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#9b869b"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#ab875d"
+	    },
+	    "hljs-built_in": {
+	        "color": "#ab875d"
+	    },
+	    "hljs-link": {
+	        "color": "#ab875d"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 364 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#3182bd"
+	    },
+	    "hljs": {
+	        "color": "#000"
+	    },
+	    "hljs-string": {
+	        "color": "#756bb1"
+	    },
+	    "hljs-meta": {
+	        "color": "#756bb1"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#756bb1"
+	    },
+	    "hljs-regexp": {
+	        "color": "#31a354"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-strong": {
+	        "color": "#3182bd"
+	    },
+	    "hljs-type": {
+	        "color": "#3182bd"
+	    },
+	    "hljs-section": {
+	        "color": "#3182bd"
+	    },
+	    "hljs-deletion": {
+	        "color": "#88f"
+	    },
+	    "hljs-subst": {
+	        "color": "#000"
+	    },
+	    "hljs-addition": {
+	        "color": "#756bb1"
+	    },
+	    "hljs-bullet": {
+	        "color": "#31a354"
+	    },
+	    "hljs-variable": {
+	        "color": "#88f"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#3182bd"
+	    },
+	    "hljs-name": {
+	        "color": "#3182bd"
+	    },
+	    "hljs-number": {
+	        "color": "#31a354"
+	    },
+	    "hljs-symbol": {
+	        "color": "#756bb1"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#3182bd"
+	    },
+	    "hljs-tag": {
+	        "color": "#3182bd"
+	    },
+	    "hljs-keyword": {
+	        "color": "#3182bd"
+	    },
+	    "hljs-literal": {
+	        "color": "#31a354"
+	    },
+	    "hljs-comment": {
+	        "color": "#636363"
+	    },
+	    "hljs-quote": {
+	        "color": "#636363"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#3182bd"
+	    },
+	    "hljs-doctag": {
+	        "color": "#3182bd"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#756bb1"
+	    },
+	    "hljs-built_in": {
+	        "color": "#3182bd"
+	    },
+	    "hljs-link": {
+	        "color": "#31a354"
+	    },
+	    "hljs-attribute": {
+	        "color": "#e6550d"
+	    }
+	};
+
+/***/ },
+/* 365 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs": {
+	        "color": "#ddd"
+	    },
+	    "hljs-string": {
+	        "color": "#d88"
+	    },
+	    "hljs-meta": {
+	        "color": "#777"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#d88"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-type": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-section": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-deletion": {
+	        "color": "#777"
+	    },
+	    "hljs-subst": {
+	        "color": "#ddd"
+	    },
+	    "hljs-addition": {
+	        "color": "#d88"
+	    },
+	    "hljs-name": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-bullet": {
+	        "color": "#d88"
+	    },
+	    "hljs-selector-tag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-variable": {
+	        "color": "#d88"
+	    },
+	    "hljs-symbol": {
+	        "color": "#d88"
+	    },
+	    "hljs-attribute": {
+	        "color": "#d88"
+	    },
+	    "hljs-keyword": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-literal": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-comment": {
+	        "color": "#777"
+	    },
+	    "hljs-quote": {
+	        "color": "#777"
+	    },
+	    "hljs-doctag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-built_in": {
+	        "color": "#d88"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#d88"
+	    },
+	    "hljs-link": {
+	        "color": "white"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    }
+	};
+
+/***/ },
+/* 366 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#e0c46c"
+	    },
+	    "hljs": {
+	        "color": "#bababa"
+	    },
+	    "hljs-regexp": {
+	        "color": "#6896ba"
+	    },
+	    "hljs-string": {
+	        "color": "#e0c46c"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#e0c46c"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#e0c46c"
+	    },
+	    "hljs-strong": {
+	        "color": "#a8a8a2"
+	    },
+	    "hljs-type": {
+	        "color": "#e0c46c"
+	    },
+	    "hljs-section": {
+	        "color": "#cb7832"
+	    },
+	    "hljs-subst": {
+	        "color": "#e0c46c"
+	    },
+	    "hljs-addition": {
+	        "color": "#e0c46c"
+	    },
+	    "hljs-bullet": {
+	        "color": "#6896ba"
+	    },
+	    "hljs-name": {
+	        "color": "#cb7832"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#cb7832"
+	    },
+	    "hljs-code": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-params": {
+	        "color": "#b9b9b9"
+	    },
+	    "hljs-variable": {
+	        "color": "#cb7832"
+	    },
+	    "hljs-number": {
+	        "color": "#6896ba"
+	    },
+	    "hljs-symbol": {
+	        "color": "#e0c46c"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#e0c46c"
+	    },
+	    "hljs-attribute": {
+	        "color": "#cb7832"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#e0c46c"
+	    },
+	    "hljs-keyword": {
+	        "color": "#cb7832"
+	    },
+	    "hljs-literal": {
+	        "color": "#6896ba"
+	    },
+	    "hljs-quote": {
+	        "color": "#6896ba"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-built_in": {
+	        "color": "#e0c46c"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#e0c46c"
+	    },
+	    "hljs-link": {
+	        "color": "#6896ba"
+	    },
+	    "hljs-comment": {
+	        "color": "#7f7f7f"
+	    },
+	    "hljs-deletion": {
+	        "color": "#7f7f7f"
+	    },
+	    "hljs-meta": {
+	        "color": "#7f7f7f"
+	    }
+	};
+
+/***/ },
+/* 367 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#BC6060"
+	    },
+	    "hljs-title": {
+	        "color": "#880000",
+	        "fontWeight": "bold"
+	    },
+	    "hljs": {
+	        "color": "#444"
+	    },
+	    "hljs-string": {
+	        "color": "#880000"
+	    },
+	    "hljs-regexp": {
+	        "color": "#BC6060"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#880000"
+	    },
+	    "hljs-meta": {
+	        "color": "#1f7199"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-type": {
+	        "color": "#880000"
+	    },
+	    "hljs-section": {
+	        "color": "#880000",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-deletion": {
+	        "color": "#880000"
+	    },
+	    "hljs-subst": {
+	        "color": "#444"
+	    },
+	    "hljs-meta-keyword": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-addition": {
+	        "color": "#397300"
+	    },
+	    "hljs-name": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-variable": {
+	        "color": "#BC6060"
+	    },
+	    "hljs-selector-tag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-bullet": {
+	        "color": "#397300"
+	    },
+	    "hljs-code": {
+	        "color": "#397300"
+	    },
+	    "hljs-number": {
+	        "color": "#880000"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#880000"
+	    },
+	    "hljs-symbol": {
+	        "color": "#BC6060"
+	    },
+	    "hljs-attribute": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-meta-string": {
+	        "color": "#4d99bf"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#BC6060"
+	    },
+	    "hljs-keyword": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-literal": {
+	        "color": "#78A960"
+	    },
+	    "hljs-comment": {
+	        "color": "#888888"
+	    },
+	    "hljs-quote": {
+	        "color": "#880000"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#880000"
+	    },
+	    "hljs-doctag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#BC6060"
+	    },
+	    "hljs-built_in": {
+	        "color": "#397300"
+	    },
+	    "hljs-link": {
+	        "color": "#BC6060"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 368 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#458",
+	        "fontWeight": "bold"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "color": "#000",
+	        "background": "#f8f8ff"
+	    },
+	    "hljs-string": {
+	        "color": "#219161"
+	    },
+	    "hljs-regexp": {
+	        "color": "#b68"
+	    },
+	    "hljs-meta": {
+	        "color": "#999",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#0086b3"
+	    },
+	    "hljs-type": {
+	        "color": "#19469d"
+	    },
+	    "hljs-section": {
+	        "color": "#19469d"
+	    },
+	    "hljs-deletion": {
+	        "background": "#fdd"
+	    },
+	    "hljs-subst": {
+	        "color": "#954121"
+	    },
+	    "hljs-addition": {
+	        "background": "#dfd"
+	    },
+	    "hljs-name": {
+	        "color": "#000080",
+	        "fontWeight": "normal"
+	    },
+	    "hljs-variable": {
+	        "color": "#008080"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#954121"
+	    },
+	    "hljs-bullet": {
+	        "color": "#990073"
+	    },
+	    "hljs-params": {
+	        "color": "#00f"
+	    },
+	    "hljs-number": {
+	        "color": "#40a070"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#19469d"
+	    },
+	    "hljs-symbol": {
+	        "color": "#990073"
+	    },
+	    "hljs-attribute": {
+	        "color": "#000080",
+	        "fontWeight": "normal"
+	    },
+	    "hljs-tag": {
+	        "color": "#000080",
+	        "fontWeight": "normal"
+	    },
+	    "hljs-keyword": {
+	        "color": "#954121"
+	    },
+	    "hljs-literal": {
+	        "color": "#954121"
+	    },
+	    "hljs-comment": {
+	        "color": "#408080",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-quote": {
+	        "color": "#408080",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#19469d"
+	    },
+	    "hljs-doctag": {
+	        "color": "#219161"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#008080"
+	    },
+	    "hljs-built_in": {
+	        "color": "#0086b3"
+	    },
+	    "hljs-link": {
+	        "color": "#b68"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 369 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs": {
+	        "color": "#f8f8f2"
+	    },
+	    "hljs-string": {
+	        "color": "#f1fa8c"
+	    },
+	    "hljs-meta": {
+	        "color": "#6272a4"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#f1fa8c"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-type": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-section": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-deletion": {
+	        "color": "#6272a4"
+	    },
+	    "hljs-subst": {
+	        "color": "#f8f8f2"
+	    },
+	    "hljs-addition": {
+	        "color": "#f1fa8c"
+	    },
+	    "hljs-name": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-bullet": {
+	        "color": "#f1fa8c"
+	    },
+	    "hljs-selector-tag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-variable": {
+	        "color": "#f1fa8c"
+	    },
+	    "hljs-symbol": {
+	        "color": "#f1fa8c"
+	    },
+	    "hljs-attribute": {
+	        "color": "#f1fa8c"
+	    },
+	    "hljs-function .hljs-keyword": {
+	        "color": "#ff79c6"
+	    },
+	    "hljs-keyword": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-literal": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-comment": {
+	        "color": "#6272a4"
+	    },
+	    "hljs-quote": {
+	        "color": "#6272a4"
+	    },
+	    "hljs-doctag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#f1fa8c"
+	    },
+	    "hljs-link": {
+	        "color": "#8be9fd"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    }
+	};
+
+/***/ },
+/* 370 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs": {
+	        "color": "#0ff"
+	    },
+	    "hljs-string": {
+	        "color": "#ff0"
+	    },
+	    "hljs-regexp": {
+	        "color": "#0f0"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#ff0"
+	    },
+	    "hljs-meta": {
+	        "color": "#008080"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#ff0"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-type": {
+	        "color": "#fff"
+	    },
+	    "hljs-section": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-deletion": {
+	        "color": "#888"
+	    },
+	    "hljs-subst": {
+	        "color": "#0ff"
+	    },
+	    "hljs-addition": {
+	        "color": "#ff0"
+	    },
+	    "hljs-bullet": {
+	        "color": "#ff0"
+	    },
+	    "hljs-name": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-selector-tag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-variable": {
+	        "color": "#fff"
+	    },
+	    "hljs-number": {
+	        "color": "#0f0"
+	    },
+	    "hljs-symbol": {
+	        "color": "#ff0"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#fff"
+	    },
+	    "hljs-attribute": {
+	        "color": "#ff0"
+	    },
+	    "hljs-keyword": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-literal": {
+	        "color": "#0f0"
+	    },
+	    "hljs-comment": {
+	        "color": "#888"
+	    },
+	    "hljs-quote": {
+	        "color": "#888"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#fff"
+	    },
+	    "hljs-doctag": {
+	        "color": "#888"
+	    },
+	    "hljs-built_in": {
+	        "color": "#ff0"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#ff0"
+	    },
+	    "hljs-link": {
+	        "color": "#0f0"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    }
+	};
+
+/***/ },
+/* 371 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#900"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "background": "#eee",
+	        "color": "black"
+	    },
+	    "hljs-string": {
+	        "color": "#d14"
+	    },
+	    "hljs-meta": {
+	        "color": "#3344bb"
+	    },
+	    "hljs-regexp": {
+	        "backgroundColor": "#fff0ff",
+	        "color": "#880088"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-type": {
+	        "color": "#458"
+	    },
+	    "hljs-section": {
+	        "color": "#900"
+	    },
+	    "hljs-deletion": {
+	        "color": "#d14"
+	    },
+	    "hljs-addition": {
+	        "color": "#070"
+	    },
+	    "hljs-class .hljs-title": {
+	        "color": "#458"
+	    },
+	    "hljs-variable": {
+	        "color": "#336699"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#099"
+	    },
+	    "hljs-bullet": {
+	        "color": "#997700"
+	    },
+	    "hljs-code": {
+	        "color": "#099"
+	    },
+	    "hljs-number": {
+	        "color": "#099"
+	    },
+	    "hljs-symbol": {
+	        "color": "#990073"
+	    },
+	    "hljs-attribute": {
+	        "color": "#070"
+	    },
+	    "hljs-keyword": {
+	        "color": "#099"
+	    },
+	    "hljs-literal": {
+	        "color": "#099"
+	    },
+	    "hljs-quote": {
+	        "color": "#998",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-comment": {
+	        "color": "#998",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#336699"
+	    },
+	    "hljs-link": {
+	        "color": "#070"
+	    },
+	    "hljs-tag": {
+	        "color": "#007700"
+	    },
+	    "hljs-name": {
+	        "color": "#007700"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#007700"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#007700"
+	    }
+	};
+
+/***/ },
+/* 372 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#795da3"
+	    },
+	    "hljs-title": {
+	        "color": "#795da3"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "background": "white",
+	        "padding": "0.5em",
+	        "color": "#333333",
+	        "overflowX": "auto"
+	    },
+	    "hljs-string": {
+	        "color": "#df5000"
+	    },
+	    "hljs-meta": {
+	        "color": "#969896"
+	    },
+	    "hljs-emphasis": {
+	        "color": "#df5000"
+	    },
+	    "hljs-strong": {
+	        "color": "#df5000"
+	    },
+	    "hljs-type": {
+	        "color": "#a71d5d"
+	    },
+	    "hljs-section": {
+	        "color": "#63a35c"
+	    },
+	    "hljs-deletion": {
+	        "color": "#bd2c00",
+	        "backgroundColor": "#ffecec"
+	    },
+	    "hljs-addition": {
+	        "color": "#55a532",
+	        "backgroundColor": "#eaffea"
+	    },
+	    "hljs-bullet": {
+	        "color": "#0086b3"
+	    },
+	    "hljs-variable": {
+	        "color": "#df5000"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#a71d5d"
+	    },
+	    "hljs-name": {
+	        "color": "#63a35c"
+	    },
+	    "hljs-symbol": {
+	        "color": "#0086b3"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#795da3"
+	    },
+	    "hljs-attribute": {
+	        "color": "#0086b3"
+	    },
+	    "hljs-attr": {
+	        "color": "#795da3"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#795da3"
+	    },
+	    "hljs-tag": {
+	        "color": "#333333"
+	    },
+	    "hljs-keyword": {
+	        "color": "#a71d5d"
+	    },
+	    "hljs-literal": {
+	        "color": "#0086b3"
+	    },
+	    "hljs-comment": {
+	        "color": "#969896"
+	    },
+	    "hljs-quote": {
+	        "color": "#df5000"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#795da3"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#df5000"
+	    },
+	    "hljs-link": {
+	        "textDecoration": "underline"
+	    }
+	};
+
+/***/ },
+/* 373 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#900",
+	        "fontWeight": "bold"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "color": "#333",
+	        "background": "#f8f8f8"
+	    },
+	    "hljs-string": {
+	        "color": "#d14"
+	    },
+	    "hljs-regexp": {
+	        "color": "#009926"
+	    },
+	    "hljs-meta": {
+	        "color": "#999",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#0086b3"
+	    },
+	    "hljs-type": {
+	        "color": "#458",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-section": {
+	        "color": "#900",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-deletion": {
+	        "background": "#fdd"
+	    },
+	    "hljs-subst": {
+	        "fontWeight": "normal"
+	    },
+	    "hljs-addition": {
+	        "background": "#dfd"
+	    },
+	    "hljs-class .hljs-title": {
+	        "color": "#458",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-variable": {
+	        "color": "#008080"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#333",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-name": {
+	        "color": "#000080",
+	        "fontWeight": "normal"
+	    },
+	    "hljs-bullet": {
+	        "color": "#990073"
+	    },
+	    "hljs-number": {
+	        "color": "#008080"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#900",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-symbol": {
+	        "color": "#990073"
+	    },
+	    "hljs-attribute": {
+	        "color": "#000080",
+	        "fontWeight": "normal"
+	    },
+	    "hljs-tag": {
+	        "color": "#000080",
+	        "fontWeight": "normal"
+	    },
+	    "hljs-tag .hljs-attr": {
+	        "color": "#008080"
+	    },
+	    "hljs-keyword": {
+	        "color": "#333",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-literal": {
+	        "color": "#008080"
+	    },
+	    "hljs-comment": {
+	        "color": "#998",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-quote": {
+	        "color": "#998",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-doctag": {
+	        "color": "#d14"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#008080"
+	    },
+	    "hljs-built_in": {
+	        "color": "#0086b3"
+	    },
+	    "hljs-link": {
+	        "color": "#009926"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 374 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#080"
+	    },
+	    "hljs-title": {
+	        "color": "#606"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "background": "white",
+	        "color": "black"
+	    },
+	    "hljs-string": {
+	        "color": "#080"
+	    },
+	    "hljs-regexp": {
+	        "color": "#080"
+	    },
+	    "hljs-meta": {
+	        "color": "#066"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#606"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-type": {
+	        "color": "#606"
+	    },
+	    "hljs-section": {
+	        "color": "#008"
+	    },
+	    "hljs-deletion": {
+	        "backgroundColor": "#ffc8bd"
+	    },
+	    "hljs-subst": {
+	        "color": "#000"
+	    },
+	    "hljs-addition": {
+	        "backgroundColor": "#baeeba"
+	    },
+	    "hljs-name": {
+	        "color": "#008"
+	    },
+	    "hljs-variable": {
+	        "color": "#660"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#008"
+	    },
+	    "hljs-bullet": {
+	        "color": "#066"
+	    },
+	    "hljs-params": {
+	        "color": "#606"
+	    },
+	    "hljs-number": {
+	        "color": "#066"
+	    },
+	    "hljs-symbol": {
+	        "color": "#066"
+	    },
+	    "hljs-formula": {
+	        "backgroundColor": "#eee",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-attribute": {
+	        "color": "#000"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#9B703F"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#080"
+	    },
+	    "hljs-attr": {
+	        "color": "#606"
+	    },
+	    "hljs-keyword": {
+	        "color": "#008"
+	    },
+	    "hljs-literal": {
+	        "color": "#066"
+	    },
+	    "hljs-comment": {
+	        "color": "#800"
+	    },
+	    "hljs-quote": {
+	        "color": "#800"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#9B703F"
+	    },
+	    "hljs-doctag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#660"
+	    },
+	    "hljs-built_in": {
+	        "color": "#606"
+	    },
+	    "hljs-link": {
+	        "color": "#066"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    }
+	};
+
+/***/ },
+/* 375 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#000",
+	        "fontWeight": "bold"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "color": "#333",
+	        "background": "#fff"
+	    },
+	    "hljs-string": {
+	        "color": "#333",
+	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAJ0lEQVQIW2O8e/fufwYGBgZBQUEQxcCIIfDu3Tuwivfv30NUoAsAALHpFMMLqZlPAAAAAElFTkSuQmCC) repeat"
+	    },
+	    "hljs-regexp": {
+	        "color": "#333",
+	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAICAYAAADA+m62AAAAPUlEQVQYV2NkQAN37979r6yszIgujiIAU4RNMVwhuiQ6H6wQl3XI4oy4FMHcCJPHcDS6J2A2EqUQpJhohQDexSef15DBCwAAAABJRU5ErkJggg==) repeat"
+	    },
+	    "hljs-meta": {
+	        "color": "#999",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#000",
+	        "textDecoration": "underline"
+	    },
+	    "hljs-type": {
+	        "color": "#333",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-section": {
+	        "color": "#000",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-deletion": {
+	        "color": "#fff",
+	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAADCAYAAABS3WWCAAAAE0lEQVQIW2MMDQ39zzhz5kwIAQAyxweWgUHd1AAAAABJRU5ErkJggg==) repeat"
+	    },
+	    "hljs-subst": {
+	        "fontWeight": "normal"
+	    },
+	    "hljs-addition": {
+	        "color": "#000",
+	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAkAAAAJCAYAAADgkQYQAAAALUlEQVQYV2N89+7dfwYk8P79ewZBQUFkIQZGOiu6e/cuiptQHAPl0NtNxAQBAM97Oejj3Dg7AAAAAElFTkSuQmCC) repeat"
+	    },
+	    "hljs-class .hljs-title": {
+	        "color": "#333",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-name": {
+	        "color": "#333",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#333",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-bullet": {
+	        "color": "#000",
+	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAKElEQVQIW2NkQAO7d+/+z4gsBhJwdXVlhAvCBECKwIIwAbhKZBUwBQA6hBpm5efZsgAAAABJRU5ErkJggg==) repeat"
+	    },
+	    "hljs-number": {
+	        "color": "#777"
+	    },
+	    "hljs-formula": {
+	        "color": "#333",
+	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAJ0lEQVQIW2O8e/fufwYGBgZBQUEQxcCIIfDu3Tuwivfv30NUoAsAALHpFMMLqZlPAAAAAElFTkSuQmCC) repeat"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#000",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-symbol": {
+	        "color": "#000",
+	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAKElEQVQIW2NkQAO7d+/+z4gsBhJwdXVlhAvCBECKwIIwAbhKZBUwBQA6hBpm5efZsgAAAABJRU5ErkJggg==) repeat"
+	    },
+	    "hljs-tag": {
+	        "color": "#333"
+	    },
+	    "hljs-keyword": {
+	        "color": "#333",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-literal": {
+	        "color": "#777"
+	    },
+	    "hljs-comment": {
+	        "color": "#777",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-quote": {
+	        "color": "#777",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-doctag": {
+	        "color": "#333",
+	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAJ0lEQVQIW2O8e/fufwYGBgZBQUEQxcCIIfDu3Tuwivfv30NUoAsAALHpFMMLqZlPAAAAAElFTkSuQmCC) repeat"
+	    },
+	    "hljs-built_in": {
+	        "color": "#000",
+	        "textDecoration": "underline"
+	    },
+	    "hljs-link": {
+	        "color": "#000",
+	        "background": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAKElEQVQIW2NkQAO7d+/+z4gsBhJwdXVlhAvCBECKwIIwAbhKZBUwBQA6hBpm5efZsgAAAABJRU5ErkJggg==) repeat"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 376 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#b8bb26"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#fabd2f"
+	    },
+	    "hljs-type": {
+	        "color": "#fabd2f"
+	    },
+	    "hljs-section": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-deletion": {
+	        "color": "#fb4934"
+	    },
+	    "hljs-subst": {
+	        "color": "#ebdbb2"
+	    },
+	    "hljs-name": {
+	        "color": "#83a598"
+	    },
+	    "hljs-bullet": {
+	        "color": "#8ec07c"
+	    },
+	    "hljs-code": {
+	        "color": "#fe8019"
+	    },
+	    "hljs-number": {
+	        "color": "#d3869b"
+	    },
+	    "hljs-class": {
+	        "color": "#8ec07c"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#8ec07c"
+	    },
+	    "hljs-function .hljs-keyword": {
+	        "color": "#8ec07c"
+	    },
+	    "hljs-literal": {
+	        "color": "#d3869b"
+	    },
+	    "hljs-function": {
+	        "color": "#8ec07c"
+	    },
+	    "hljs-title": {
+	        "color": "#83a598"
+	    },
+	    "hljs-regexp": {
+	        "color": "#fe8019"
+	    },
+	    "hljs-meta": {
+	        "color": "#fe8019"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#8f3f71"
+	    },
+	    "hljs-meta-keyword": {
+	        "color": "#8ec07c"
+	    },
+	    "hljs-meta-string": {
+	        "color": "#b8bb26"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#fb4934"
+	    },
+	    "hljs-params": {
+	        "color": "#fabd2f"
+	    },
+	    "hljs-formula": {
+	        "color": "#fb4934"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#fe8019"
+	    },
+	    "hljs-symbol": {
+	        "color": "#b8bb26"
+	    },
+	    "hljs-link_label": {
+	        "color": "#d3869b"
+	    },
+	    "hljs-link": {
+	        "color": "#fb4934"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-addition": {
+	        "color": "#b8bb26"
+	    },
+	    "hljs-attribute": {
+	        "color": "#8ec07c"
+	    },
+	    "hljs-attr": {
+	        "color": "#fabd2f"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#b8bb26"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#fe8019"
+	    },
+	    "hljs": {
+	        "color": "#ebdbb2"
+	    },
+	    "hljs-string": {
+	        "color": "#b8bb26"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-variable": {
+	        "color": "#83a598"
+	    },
+	    "hljs-tag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-keyword": {
+	        "color": "#fb4934"
+	    },
+	    "hljs-quote": {
+	        "color": "#83a598"
+	    },
+	    "hljs-comment": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-doctag": {
+	        "color": "#8f3f71"
+	    },
+	    "hljs-built_in": {
+	        "color": "#83a598"
+	    }
+	};
+
+/***/ },
+/* 377 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#79740e"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#b57614"
+	    },
+	    "hljs-type": {
+	        "color": "#b57614"
+	    },
+	    "hljs-section": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-deletion": {
+	        "color": "#9d0006"
+	    },
+	    "hljs-subst": {
+	        "color": "#3c3836"
+	    },
+	    "hljs-name": {
+	        "color": "#076678"
+	    },
+	    "hljs-bullet": {
+	        "color": "#427b58"
+	    },
+	    "hljs-code": {
+	        "color": "#af3a03"
+	    },
+	    "hljs-number": {
+	        "color": "#8f3f71"
+	    },
+	    "hljs-class": {
+	        "color": "#427b58"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#427b58"
+	    },
+	    "hljs-function .hljs-keyword": {
+	        "color": "#427b58"
+	    },
+	    "hljs-literal": {
+	        "color": "#8f3f71"
+	    },
+	    "hljs-function": {
+	        "color": "#427b58"
+	    },
+	    "hljs-title": {
+	        "color": "#076678"
+	    },
+	    "hljs-regexp": {
+	        "color": "#af3a03"
+	    },
+	    "hljs-meta": {
+	        "color": "#af3a03"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#8f3f71"
+	    },
+	    "hljs-meta-keyword": {
+	        "color": "#427b58"
+	    },
+	    "hljs-meta-string": {
+	        "color": "#79740e"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#9d0006"
+	    },
+	    "hljs-params": {
+	        "color": "#b57614"
+	    },
+	    "hljs-formula": {
+	        "color": "#9d0006"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#af3a03"
+	    },
+	    "hljs-symbol": {
+	        "color": "#79740e"
+	    },
+	    "hljs-link_label": {
+	        "color": "#8f3f71"
+	    },
+	    "hljs-link": {
+	        "color": "#9d0006"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-addition": {
+	        "color": "#79740e"
+	    },
+	    "hljs-attribute": {
+	        "color": "#427b58"
+	    },
+	    "hljs-attr": {
+	        "color": "#b57614"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#79740e"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#af3a03"
+	    },
+	    "hljs": {
+	        "color": "#3c3836"
+	    },
+	    "hljs-string": {
+	        "color": "#79740e"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-variable": {
+	        "color": "#076678"
+	    },
+	    "hljs-tag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-keyword": {
+	        "color": "#9d0006"
+	    },
+	    "hljs-quote": {
+	        "color": "#076678"
+	    },
+	    "hljs-comment": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-doctag": {
+	        "color": "#8f3f71"
+	    },
+	    "hljs-built_in": {
+	        "color": "#076678"
+	    }
+	};
+
+/***/ },
+/* 378 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#1290bf"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "background": "#322931",
+	        "color": "#b9b5b8",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#dd464c"
+	    },
+	    "hljs-string": {
+	        "color": "#8fc13e"
+	    },
+	    "hljs-meta": {
+	        "color": "#149b93"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#fd8b19"
+	    },
+	    "hljs-type": {
+	        "color": "#fd8b19"
+	    },
+	    "hljs-section": {
+	        "color": "#1290bf"
+	    },
+	    "hljs-deletion": {
+	        "color": "#dd464c"
+	    },
+	    "hljs-addition": {
+	        "color": "#8fc13e"
+	    },
+	    "hljs-name": {
+	        "color": "#dd464c"
+	    },
+	    "hljs-variable": {
+	        "color": "#dd464c"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#c85e7c"
+	    },
+	    "hljs-class .hljs-title": {
+	        "color": "#fdcc59"
+	    },
+	    "hljs-params": {
+	        "color": "#fd8b19"
+	    },
+	    "hljs-bullet": {
+	        "color": "#8fc13e"
+	    },
+	    "hljs-number": {
+	        "color": "#fd8b19"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#dd464c"
+	    },
+	    "hljs-symbol": {
+	        "color": "#8fc13e"
+	    },
+	    "hljs-attribute": {
+	        "color": "#dd464c"
+	    },
+	    "hljs-tag": {
+	        "color": "#dd464c"
+	    },
+	    "hljs-keyword": {
+	        "color": "#c85e7c"
+	    },
+	    "hljs-literal": {
+	        "color": "#fd8b19"
+	    },
+	    "hljs-comment": {
+	        "color": "#989498"
+	    },
+	    "hljs-quote": {
+	        "color": "#989498"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#dd464c"
+	    },
+	    "hljs-function": {
+	        "color": "#1290bf"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#dd464c"
+	    },
+	    "hljs-built_in": {
+	        "color": "#fd8b19"
+	    },
+	    "hljs-link": {
+	        "color": "#dd464c"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 379 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#b5bd68"
+	    },
+	    "hljs-title": {
+	        "color": "#f0c674"
+	    },
+	    "hljs": {
+	        "color": "#c5c8c6"
+	    },
+	    "hljs-string": {
+	        "color": "#b5bd68"
+	    },
+	    "hljs-meta": {
+	        "color": "#707880"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#8abeb7"
+	    },
+	    "hljs-regexp": {
+	        "color": "#b5bd68"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#de935f"
+	    },
+	    "hljs-type": {
+	        "color": "#de935f"
+	    },
+	    "hljs-section": {
+	        "color": "#de935f"
+	    },
+	    "hljs-deletion": {
+	        "color": "#cc6666"
+	    },
+	    "hljs-subst": {
+	        "color": "#8abeb7"
+	    },
+	    "hljs-addition": {
+	        "color": "#b5bd68"
+	    },
+	    "hljs-name": {
+	        "color": "#f0c674"
+	    },
+	    "hljs-bullet": {
+	        "color": "#81a2be"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#81a2be"
+	    },
+	    "hljs-code": {
+	        "color": "#b294bb"
+	    },
+	    "hljs-variable": {
+	        "color": "#8abeb7"
+	    },
+	    "hljs-number": {
+	        "color": "#cc6666"
+	    },
+	    "hljs::selection": {
+	        "background": "#373b41"
+	    },
+	    "hljs::-moz-selection": {
+	        "background": "#373b41"
+	    },
+	    "hljs-attribute": {
+	        "color": "#b294bb"
+	    },
+	    "hljs-symbol": {
+	        "color": "#cc6666"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#b5bd68"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#b294bb"
+	    },
+	    "hljs-tag": {
+	        "color": "#81a2be"
+	    },
+	    "hljs-meta .hljs-keyword": {
+	        "color": "#707880"
+	    },
+	    "hljs-literal": {
+	        "color": "#cc6666"
+	    },
+	    "hljs-keyword": {
+	        "color": "#81a2be"
+	    },
+	    "hljs-comment": {
+	        "color": "#707880"
+	    },
+	    "hljs-quote": {
+	        "color": "#de935f"
+	    },
+	    "hljs span::selection": {
+	        "background": "#373b41"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#de935f"
+	    },
+	    "hljs-doctag": {
+	        "color": "#b5bd68"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#8abeb7"
+	    },
+	    "hljs-built_in": {
+	        "color": "#de935f"
+	    },
+	    "hljs-link": {
+	        "color": "#cc6666"
+	    },
+	    "hljs span::-moz-selection": {
+	        "background": "#373b41"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 380 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "fontWeight": "normal",
+	        "color": "#000"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "color": "#000",
+	        "background": "#fff"
+	    },
+	    "hljs-regexp": {
+	        "fontWeight": "normal"
+	    },
+	    "hljs-meta": {
+	        "color": "#808000"
+	    },
+	    "hljs-string": {
+	        "color": "#008000",
+	        "fontWeight": "bold"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-type": {
+	        "fontWeight": "bold",
+	        "color": "#000080"
+	    },
+	    "hljs-section": {
+	        "fontWeight": "bold",
+	        "color": "#000080"
+	    },
+	    "hljs-deletion": {
+	        "background": "#ffc8bd"
+	    },
+	    "hljs-subst": {
+	        "fontWeight": "normal",
+	        "color": "#000"
+	    },
+	    "hljs-addition": {
+	        "background": "#baeeba"
+	    },
+	    "hljs-name": {
+	        "fontWeight": "bold",
+	        "color": "#000080"
+	    },
+	    "hljs-bullet": {
+	        "color": "#000",
+	        "background": "#d0eded",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-selector-tag": {
+	        "fontWeight": "bold",
+	        "color": "#000080"
+	    },
+	    "hljs-variable": {
+	        "color": "#660e7a"
+	    },
+	    "hljs-number": {
+	        "fontWeight": "normal"
+	    },
+	    "hljs-selector-id": {
+	        "fontWeight": "bold",
+	        "color": "#000080"
+	    },
+	    "hljs-symbol": {
+	        "color": "#000",
+	        "background": "#d0eded",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-attribute": {
+	        "fontWeight": "bold",
+	        "color": "#0000ff"
+	    },
+	    "hljs-formula": {
+	        "color": "#000",
+	        "background": "#d0eded",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-tag": {
+	        "background": "#efefef"
+	    },
+	    "hljs-keyword": {
+	        "fontWeight": "bold",
+	        "color": "#000080"
+	    },
+	    "hljs-literal": {
+	        "fontWeight": "bold",
+	        "color": "#000080"
+	    },
+	    "hljs-comment": {
+	        "color": "#808080",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-quote": {
+	        "color": "#808080",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-selector-class": {
+	        "fontWeight": "bold",
+	        "color": "#000080"
+	    },
+	    "hljs-doctag": {
+	        "textDecoration": "underline"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#660e7a"
+	    },
+	    "hljs-link": {
+	        "fontWeight": "normal"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 381 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#a8ff60"
+	    },
+	    "hljs-title": {
+	        "color": "#ffffb6"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "background": "#000",
+	        "color": "#f8f8f8"
+	    },
+	    "hljs-string": {
+	        "color": "#a8ff60"
+	    },
+	    "hljs-meta": {
+	        "color": "#7c7c7c"
+	    },
+	    "hljs-regexp": {
+	        "color": "#e9c062"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-type": {
+	        "color": "#ffffb6"
+	    },
+	    "hljs-section": {
+	        "color": "#ffffb6"
+	    },
+	    "hljs-deletion": {
+	        "color": "#ff73fd"
+	    },
+	    "hljs-subst": {
+	        "color": "#daefa3"
+	    },
+	    "hljs-addition": {
+	        "color": "#a8ff60"
+	    },
+	    "hljs-name": {
+	        "color": "#96cbfe"
+	    },
+	    "hljs-bullet": {
+	        "color": "#c6c5fe"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#96cbfe"
+	    },
+	    "hljs-variable": {
+	        "color": "#c6c5fe"
+	    },
+	    "hljs-number": {
+	        "color": "#ff73fd"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#ffffb6"
+	    },
+	    "hljs-symbol": {
+	        "color": "#c6c5fe"
+	    },
+	    "hljs-attribute": {
+	        "color": "#ffffb6"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#a8ff60"
+	    },
+	    "hljs-tag": {
+	        "color": "#96cbfe"
+	    },
+	    "hljs-keyword": {
+	        "color": "#96cbfe"
+	    },
+	    "hljs-literal": {
+	        "color": "#c6c5fe"
+	    },
+	    "hljs-comment": {
+	        "color": "#7c7c7c"
+	    },
+	    "hljs-quote": {
+	        "color": "#7c7c7c"
+	    },
+	    "hljs-doctag": {
+	        "color": "#ffffb6"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#c6c5fe"
+	    },
+	    "hljs-link": {
+	        "color": "#e9c062"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 382 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#f06431"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#221a0f",
+	        "color": "#d3af86",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#dc3958"
+	    },
+	    "hljs-meta": {
+	        "color": "#dc3958"
+	    },
+	    "hljs-string": {
+	        "color": "#889b4a"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#f79a32"
+	    },
+	    "hljs-type": {
+	        "color": "#f79a32"
+	    },
+	    "hljs-section": {
+	        "color": "#f06431"
+	    },
+	    "hljs-deletion": {
+	        "color": "#f79a32"
+	    },
+	    "hljs-addition": {
+	        "color": "#889b4a"
+	    },
+	    "hljs-name": {
+	        "color": "#dc3958"
+	    },
+	    "hljs-variable": {
+	        "color": "#dc3958"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#98676a"
+	    },
+	    "hljs-bullet": {
+	        "color": "#889b4a"
+	    },
+	    "hljs-params": {
+	        "color": "#f79a32"
+	    },
+	    "hljs-number": {
+	        "color": "#f79a32"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#dc3958"
+	    },
+	    "hljs-symbol": {
+	        "color": "#889b4a"
+	    },
+	    "hljs-attribute": {
+	        "color": "#f06431"
+	    },
+	    "hljs-tag": {
+	        "color": "#dc3958"
+	    },
+	    "hljs-keyword": {
+	        "color": "#98676a"
+	    },
+	    "hljs-literal": {
+	        "color": "#f79a32"
+	    },
+	    "hljs-comment": {
+	        "color": "#d6baad"
+	    },
+	    "hljs-quote": {
+	        "color": "#d6baad"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#dc3958"
+	    },
+	    "hljs-function": {
+	        "color": "#98676a"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#dc3958"
+	    },
+	    "hljs-built_in": {
+	        "color": "#f79a32"
+	    },
+	    "hljs-link": {
+	        "color": "#f79a32"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 383 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#f06431"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#fbebd4",
+	        "color": "#84613d",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#dc3958"
+	    },
+	    "hljs-meta": {
+	        "color": "#dc3958"
+	    },
+	    "hljs-string": {
+	        "color": "#889b4a"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#f79a32"
+	    },
+	    "hljs-type": {
+	        "color": "#f79a32"
+	    },
+	    "hljs-section": {
+	        "color": "#f06431"
+	    },
+	    "hljs-deletion": {
+	        "color": "#f79a32"
+	    },
+	    "hljs-addition": {
+	        "color": "#889b4a"
+	    },
+	    "hljs-name": {
+	        "color": "#dc3958"
+	    },
+	    "hljs-variable": {
+	        "color": "#dc3958"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#98676a"
+	    },
+	    "hljs-bullet": {
+	        "color": "#889b4a"
+	    },
+	    "hljs-params": {
+	        "color": "#f79a32"
+	    },
+	    "hljs-number": {
+	        "color": "#f79a32"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#dc3958"
+	    },
+	    "hljs-symbol": {
+	        "color": "#889b4a"
+	    },
+	    "hljs-attribute": {
+	        "color": "#f06431"
+	    },
+	    "hljs-tag": {
+	        "color": "#dc3958"
+	    },
+	    "hljs-keyword": {
+	        "color": "#98676a"
+	    },
+	    "hljs-literal": {
+	        "color": "#f79a32"
+	    },
+	    "hljs-comment": {
+	        "color": "#a57a4c"
+	    },
+	    "hljs-quote": {
+	        "color": "#a57a4c"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#dc3958"
+	    },
+	    "hljs-function": {
+	        "color": "#98676a"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#dc3958"
+	    },
+	    "hljs-built_in": {
+	        "color": "#f79a32"
+	    },
+	    "hljs-link": {
+	        "color": "#f79a32"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 384 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "fontWeight": "bold",
+	        "color": "navy"
+	    },
+	    "hljs": {
+	        "color": "black"
+	    },
+	    "hljs-string": {
+	        "color": "#050"
+	    },
+	    "hljs-regexp": {
+	        "color": "#800"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#050"
+	    },
+	    "hljs-meta": {
+	        "color": "#00e"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-type": {
+	        "color": "#800"
+	    },
+	    "hljs-section": {
+	        "fontWeight": "bold",
+	        "color": "navy"
+	    },
+	    "hljs-deletion": {
+	        "color": "#00e"
+	    },
+	    "hljs-subst": {
+	        "color": "black"
+	    },
+	    "hljs-addition": {
+	        "color": "#050"
+	    },
+	    "hljs-bullet": {
+	        "color": "#050"
+	    },
+	    "hljs-variable": {
+	        "color": "#050"
+	    },
+	    "hljs-selector-tag": {
+	        "fontWeight": "bold",
+	        "color": "navy"
+	    },
+	    "hljs-name": {
+	        "fontWeight": "bold",
+	        "color": "navy"
+	    },
+	    "hljs-number": {
+	        "color": "#800"
+	    },
+	    "hljs-symbol": {
+	        "color": "#050"
+	    },
+	    "hljs-attribute": {
+	        "color": "#050"
+	    },
+	    "hljs-tag": {
+	        "fontWeight": "bold",
+	        "color": "navy"
+	    },
+	    "hljs-keyword": {
+	        "fontWeight": "bold",
+	        "color": "navy"
+	    },
+	    "hljs-literal": {
+	        "color": "#800"
+	    },
+	    "hljs-comment": {
+	        "color": "#777"
+	    },
+	    "hljs-quote": {
+	        "color": "#777"
+	    },
+	    "hljs-doctag": {
+	        "fontWeight": "bold",
+	        "color": "navy"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#050"
+	    },
+	    "hljs-built_in": {
+	        "fontWeight": "bold",
+	        "color": "navy"
+	    },
+	    "hljs-link": {
+	        "color": "#800"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 385 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#0048ab"
+	    },
+	    "hljs": {
+	        "color": "#00193a"
+	    },
+	    "hljs-string": {
+	        "color": "#0048ab"
+	    },
+	    "hljs-meta": {
+	        "color": "#4c81c9"
+	    },
+	    "hljs-regexp": {
+	        "color": "#4c81c9"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-type": {
+	        "color": "#0048ab"
+	    },
+	    "hljs-section": {
+	        "color": "#0048ab"
+	    },
+	    "hljs-deletion": {
+	        "color": "#4c81c9"
+	    },
+	    "hljs-subst": {
+	        "color": "#4c81c9"
+	    },
+	    "hljs-addition": {
+	        "color": "#0048ab"
+	    },
+	    "hljs-name": {
+	        "color": "#0048ab"
+	    },
+	    "hljs-variable": {
+	        "color": "#4c81c9"
+	    },
+	    "hljs-selector-tag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-bullet": {
+	        "color": "#4c81c9"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#0048ab"
+	    },
+	    "hljs-symbol": {
+	        "color": "#4c81c9"
+	    },
+	    "hljs-attribute": {
+	        "color": "#4c81c9"
+	    },
+	    "hljs-tag": {
+	        "color": "#0048ab"
+	    },
+	    "hljs-keyword": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-literal": {
+	        "color": "#0048ab"
+	    },
+	    "hljs-comment": {
+	        "color": "#738191"
+	    },
+	    "hljs-quote": {
+	        "color": "#0048ab"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#0048ab"
+	    },
+	    "hljs-doctag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-built_in": {
+	        "color": "#0048ab"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#4c81c9"
+	    },
+	    "hljs-link": {
+	        "color": "#4c81c9"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    }
+	};
+
+/***/ },
+/* 386 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#e6db74"
+	    },
+	    "hljs-title": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs": {
+	        "color": "#f8f8f2"
+	    },
+	    "hljs-regexp": {
+	        "color": "#ae81ff"
+	    },
+	    "hljs-string": {
+	        "color": "#e6db74"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#e6db74"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-type": {
+	        "color": "#e6db74"
+	    },
+	    "hljs-section": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-subst": {
+	        "color": "#f8f8f2"
+	    },
+	    "hljs-addition": {
+	        "color": "#e6db74"
+	    },
+	    "hljs-bullet": {
+	        "color": "#ae81ff"
+	    },
+	    "hljs-name": {
+	        "color": "#f92672"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#f92672"
+	    },
+	    "hljs-class .hljs-title": {
+	        "color": "#f8f8f2"
+	    },
+	    "hljs-code": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-params": {
+	        "color": "#f8f8f2"
+	    },
+	    "hljs-variable": {
+	        "color": "#e6db74"
+	    },
+	    "hljs-number": {
+	        "color": "#ae81ff"
+	    },
+	    "hljs-symbol": {
+	        "color": "#66d9ef"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#e6db74"
+	    },
+	    "hljs-attribute": {
+	        "color": "#66d9ef"
+	    },
+	    "hljs-attr": {
+	        "color": "#f92672"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#e6db74"
+	    },
+	    "hljs-tag": {
+	        "color": "#f8f8f2"
+	    },
+	    "hljs-keyword": {
+	        "color": "#f92672"
+	    },
+	    "hljs-literal": {
+	        "color": "#ae81ff"
+	    },
+	    "hljs-quote": {
+	        "color": "#ae81ff"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-built_in": {
+	        "color": "#e6db74"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#e6db74"
+	    },
+	    "hljs-link": {
+	        "color": "#ae81ff"
+	    },
+	    "hljs-comment": {
+	        "color": "#75715e"
+	    },
+	    "hljs-deletion": {
+	        "color": "#75715e"
+	    },
+	    "hljs-meta": {
+	        "color": "#75715e"
+	    }
+	};
+
+/***/ },
+/* 387 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-title": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "background": "#272822",
+	        "color": "#ddd"
+	    },
+	    "hljs-regexp": {
+	        "color": "#bf79db"
+	    },
+	    "hljs-string": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-emphasis": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-strong": {
+	        "color": "#f92672"
+	    },
+	    "hljs-type": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-section": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-deletion": {
+	        "color": "#75715e"
+	    },
+	    "hljs-subst": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-addition": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-name": {
+	        "color": "#f92672"
+	    },
+	    "hljs-class .hljs-title": {
+	        "color": "white"
+	    },
+	    "hljs-selector-tag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-bullet": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-code": {
+	        "color": "#66d9ef"
+	    },
+	    "hljs-variable": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-meta": {
+	        "color": "#75715e"
+	    },
+	    "hljs-symbol": {
+	        "color": "#bf79db"
+	    },
+	    "hljs-attribute": {
+	        "color": "#bf79db"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-tag": {
+	        "color": "#f92672"
+	    },
+	    "hljs-keyword": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-literal": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-comment": {
+	        "color": "#75715e"
+	    },
+	    "hljs-quote": {
+	        "color": "#75715e"
+	    },
+	    "hljs-built_in": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#a6e22e"
+	    },
+	    "hljs-link": {
+	        "color": "#bf79db"
+	    },
+	    "hljs-doctag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-selector-id": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 388 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#8cbbad"
+	    },
+	    "hljs": {
+	        "color": "#e0e2e4"
+	    },
+	    "hljs-regexp": {
+	        "color": "#d39745"
+	    },
+	    "hljs-meta": {
+	        "color": "#557182"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#8cbbad"
+	    },
+	    "hljs-string": {
+	        "color": "#ec7600"
+	    },
+	    "hljs-emphasis": {
+	        "color": "#8cbbad"
+	    },
+	    "hljs-type": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-section": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-deletion": {
+	        "color": "#818e96"
+	    },
+	    "hljs-subst": {
+	        "color": "#8cbbad"
+	    },
+	    "hljs-addition": {
+	        "color": "#8cbbad"
+	    },
+	    "hljs-class .hljs-title": {
+	        "color": "white"
+	    },
+	    "hljs-name": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-selector-tag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-bullet": {
+	        "color": "#8cbbad"
+	    },
+	    "hljs-code": {
+	        "color": "white"
+	    },
+	    "hljs-variable": {
+	        "color": "#8cbbad"
+	    },
+	    "hljs-number": {
+	        "color": "#ffcd22"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#93c763"
+	    },
+	    "hljs-symbol": {
+	        "color": "#ec7600"
+	    },
+	    "hljs-attribute": {
+	        "color": "#668bb0"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#8cbbad"
+	    },
+	    "hljs-tag": {
+	        "color": "#8cbbad"
+	    },
+	    "hljs-keyword": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-literal": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-comment": {
+	        "color": "#818e96"
+	    },
+	    "hljs-quote": {
+	        "color": "#818e96"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#A082BD"
+	    },
+	    "hljs-built_in": {
+	        "color": "#8cbbad"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#8cbbad"
+	    },
+	    "hljs-link": {
+	        "color": "#d39745"
+	    },
+	    "hljs-doctag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-title": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 389 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#fec418"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#2f1e2e",
+	        "color": "#a39e9b",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-meta": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-string": {
+	        "color": "#48b685"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#f99b15"
+	    },
+	    "hljs-type": {
+	        "color": "#f99b15"
+	    },
+	    "hljs-section": {
+	        "color": "#fec418"
+	    },
+	    "hljs-deletion": {
+	        "color": "#f99b15"
+	    },
+	    "hljs-addition": {
+	        "color": "#48b685"
+	    },
+	    "hljs-name": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-variable": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#815ba4"
+	    },
+	    "hljs-bullet": {
+	        "color": "#48b685"
+	    },
+	    "hljs-params": {
+	        "color": "#f99b15"
+	    },
+	    "hljs-number": {
+	        "color": "#f99b15"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-symbol": {
+	        "color": "#48b685"
+	    },
+	    "hljs-attribute": {
+	        "color": "#fec418"
+	    },
+	    "hljs-tag": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-keyword": {
+	        "color": "#815ba4"
+	    },
+	    "hljs-literal": {
+	        "color": "#f99b15"
+	    },
+	    "hljs-comment": {
+	        "color": "#8d8687"
+	    },
+	    "hljs-quote": {
+	        "color": "#8d8687"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-built_in": {
+	        "color": "#f99b15"
+	    },
+	    "hljs-link": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 390 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#fec418"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#e7e9db",
+	        "color": "#4f424c",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-meta": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-string": {
+	        "color": "#48b685"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#f99b15"
+	    },
+	    "hljs-type": {
+	        "color": "#f99b15"
+	    },
+	    "hljs-section": {
+	        "color": "#fec418"
+	    },
+	    "hljs-deletion": {
+	        "color": "#f99b15"
+	    },
+	    "hljs-addition": {
+	        "color": "#48b685"
+	    },
+	    "hljs-name": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-variable": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#815ba4"
+	    },
+	    "hljs-bullet": {
+	        "color": "#48b685"
+	    },
+	    "hljs-params": {
+	        "color": "#f99b15"
+	    },
+	    "hljs-number": {
+	        "color": "#f99b15"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-symbol": {
+	        "color": "#48b685"
+	    },
+	    "hljs-attribute": {
+	        "color": "#fec418"
+	    },
+	    "hljs-tag": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-keyword": {
+	        "color": "#815ba4"
+	    },
+	    "hljs-literal": {
+	        "color": "#f99b15"
+	    },
+	    "hljs-comment": {
+	        "color": "#776e71"
+	    },
+	    "hljs-quote": {
+	        "color": "#776e71"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-built_in": {
+	        "color": "#f99b15"
+	    },
+	    "hljs-link": {
+	        "color": "#ef6155"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 391 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#ffb03b"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "color": "#dccf8f",
+	        "background": "url(./pojoaque.jpg) repeat scroll left top #181914"
+	    },
+	    "hljs-string": {
+	        "color": "#468966"
+	    },
+	    "hljs-regexp": {
+	        "color": "#468966"
+	    },
+	    "hljs-meta": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-type": {
+	        "color": "#b58900"
+	    },
+	    "hljs-section": {
+	        "color": "#ffb03b"
+	    },
+	    "hljs-deletion": {
+	        "color": "#dc322f"
+	    },
+	    "hljs-subst": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-addition": {
+	        "color": "#b64926"
+	    },
+	    "hljs-name": {
+	        "color": "#ffb03b"
+	    },
+	    "hljs-variable": {
+	        "color": "#b58900"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#b64926"
+	    },
+	    "hljs-class .hljs-title": {
+	        "color": "#b58900"
+	    },
+	    "hljs-bullet": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-number": {
+	        "color": "#468966"
+	    },
+	    "hljs-symbol": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#d3a60c"
+	    },
+	    "hljs-attribute": {
+	        "color": "#b89859"
+	    },
+	    "hljs-formula": {
+	        "background": "#073642"
+	    },
+	    "hljs-tag": {
+	        "color": "#b58900"
+	    },
+	    "hljs-keyword": {
+	        "color": "#b64926"
+	    },
+	    "hljs-literal": {
+	        "color": "#b64926"
+	    },
+	    "hljs-comment": {
+	        "color": "#586e75",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-quote": {
+	        "color": "#586e75",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#d3a60c"
+	    },
+	    "hljs-doctag": {
+	        "color": "#468966"
+	    },
+	    "hljs-built_in": {
+	        "color": "#ffb03b"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#b58900"
+	    },
+	    "hljs-link": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 392 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#ff55ff"
+	    },
+	    "hljs-title": {
+	        "color": "#aaaaaa"
+	    },
+	    "hljs": {
+	        "color": "#aaaaaa"
+	    },
+	    "hljs-regexp": {
+	        "color": "#ff55ff"
+	    },
+	    "hljs-string": {
+	        "color": "#ff55ff"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#ff55ff"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#ff55ff"
+	    },
+	    "hljs-strong": {
+	        "color": "#a8a8a2"
+	    },
+	    "hljs-type": {
+	        "color": "#ff55ff"
+	    },
+	    "hljs-section": {
+	        "color": "#ffff55"
+	    },
+	    "hljs-subst": {
+	        "color": "#aaaaaa"
+	    },
+	    "hljs-addition": {
+	        "color": "#ff55ff"
+	    },
+	    "hljs-bullet": {
+	        "color": "#ff55ff"
+	    },
+	    "hljs-name": {
+	        "color": "#ffff55"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#ffff55"
+	    },
+	    "hljs-class .hljs-title": {
+	        "color": "#8888ff"
+	    },
+	    "hljs-variable": {
+	        "color": "#8888ff"
+	    },
+	    "hljs-params": {
+	        "color": "#8888ff"
+	    },
+	    "hljs-code\n.hljs-selector-class": {
+	        "color": "#aaaaff"
+	    },
+	    "hljs-number": {
+	        "color": "#ff55ff"
+	    },
+	    "hljs-symbol": {
+	        "color": "#ffff55"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#ff55ff"
+	    },
+	    "hljs-attribute": {
+	        "color": "#ff5555"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#ff55ff"
+	    },
+	    "hljs-tag": {
+	        "color": "#aaaaaa"
+	    },
+	    "hljs-keyword": {
+	        "color": "#ffff55"
+	    },
+	    "hljs-literal": {
+	        "color": "#ff55ff"
+	    },
+	    "hljs-stronge": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-quote": {
+	        "color": "#ff55ff"
+	    },
+	    "hljs-function": {
+	        "color": "#ffff55"
+	    },
+	    "hljs-built_in": {
+	        "color": "#ff55ff"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#ff55ff"
+	    },
+	    "hljs-link": {
+	        "color": "#ff55ff"
+	    },
+	    "hljs-comment": {
+	        "color": "#55ffff"
+	    },
+	    "hljs-meta": {
+	        "color": "#55ffff"
+	    },
+	    "hljs-deletion": {
+	        "color": "#55ffff"
+	    }
+	};
+
+/***/ },
+/* 393 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#008000"
+	    },
+	    "hljs-title": {
+	        "color": "#000000"
+	    },
+	    "hljs": {
+	        "color": "#000000"
+	    },
+	    "hljs-regexp": {
+	        "color": "#000080"
+	    },
+	    "hljs-string": {
+	        "color": "#008000"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#008000"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#008000"
+	    },
+	    "hljs-strong": {
+	        "color": "#000000"
+	    },
+	    "hljs-type": {
+	        "color": "#008000"
+	    },
+	    "hljs-section": {
+	        "color": "#808000"
+	    },
+	    "hljs-subst": {
+	        "color": "#000000"
+	    },
+	    "hljs-addition": {
+	        "color": "#008000"
+	    },
+	    "hljs-bullet": {
+	        "color": "#000080"
+	    },
+	    "hljs-name": {
+	        "color": "#808000"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#808000"
+	    },
+	    "hljs-class .hljs-title": {
+	        "color": "#0055AF"
+	    },
+	    "hljs-variable": {
+	        "color": "#0055AF"
+	    },
+	    "hljs-params": {
+	        "color": "#0055AF"
+	    },
+	    "hljs-code\n.hljs-selector-class": {
+	        "color": "#800080"
+	    },
+	    "hljs-number": {
+	        "color": "#000080"
+	    },
+	    "hljs-symbol": {
+	        "color": "#808000"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#008000"
+	    },
+	    "hljs-attribute": {
+	        "color": "#800000"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#008000"
+	    },
+	    "hljs-tag": {
+	        "color": "#000000"
+	    },
+	    "hljs-keyword": {
+	        "color": "#808000"
+	    },
+	    "hljs-literal": {
+	        "color": "#000080"
+	    },
+	    "hljs-stronge": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-quote": {
+	        "color": "#000080"
+	    },
+	    "hljs-function": {
+	        "color": "#808000"
+	    },
+	    "hljs-built_in": {
+	        "color": "#008000"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#008000"
+	    },
+	    "hljs-link": {
+	        "color": "#008000"
+	    },
+	    "hljs-comment": {
+	        "color": "#008000"
+	    },
+	    "hljs-meta": {
+	        "color": "#008000"
+	    },
+	    "hljs-deletion": {
+	        "color": "#008000"
+	    }
+	};
+
+/***/ },
+/* 394 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#ffc66d"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "background": "#232323",
+	        "color": "#e6e1dc"
+	    },
+	    "hljs-string": {
+	        "color": "#a5c261"
+	    },
+	    "hljs-regexp": {
+	        "color": "#a5c261"
+	    },
+	    "hljs-meta": {
+	        "color": "#9b859d"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#6d9cbe"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-type": {
+	        "color": "#da4939"
+	    },
+	    "hljs-section": {
+	        "color": "#ffc66d"
+	    },
+	    "hljs-deletion": {
+	        "backgroundColor": "#600",
+	        "color": "#e6e1dc",
+	        "display": "inline-block",
+	        "width": "100%"
+	    },
+	    "hljs-subst": {
+	        "color": "#519f50"
+	    },
+	    "hljs-addition": {
+	        "backgroundColor": "#144212",
+	        "color": "#e6e1dc",
+	        "display": "inline-block",
+	        "width": "100%"
+	    },
+	    "hljs-name": {
+	        "color": "#e8bf6a"
+	    },
+	    "hljs-variable": {
+	        "color": "#a5c261"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#c26230"
+	    },
+	    "hljs-bullet": {
+	        "color": "#6d9cbe"
+	    },
+	    "hljs-params": {
+	        "color": "#d0d0ff"
+	    },
+	    "hljs-number": {
+	        "color": "#a5c261"
+	    },
+	    "hljs-symbol": {
+	        "color": "#6d9cbe"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#8b98ab"
+	    },
+	    "hljs-attribute": {
+	        "color": "#cda869"
+	    },
+	    "hljs-attr": {
+	        "color": "#6d9cbe"
+	    },
+	    "hljs-tag": {
+	        "color": "#e8bf6a"
+	    },
+	    "hljs-keyword": {
+	        "color": "#c26230"
+	    },
+	    "hljs-comment": {
+	        "color": "#bc9458",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-quote": {
+	        "color": "#bc9458",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#9b703f"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#a5c261"
+	    },
+	    "hljs-built_in": {
+	        "color": "#6d9cbe"
+	    },
+	    "hljs-link": {
+	        "textDecoration": "underline"
+	    }
+	};
+
+/***/ },
+/* 395 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#f99157"
+	    },
+	    "hljs-title": {
+	        "color": "#b5bd68"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "background": "#474949",
+	        "color": "#d1d9e1"
+	    },
+	    "hljs-string": {
+	        "color": "#8abeb7"
+	    },
+	    "hljs-regexp": {
+	        "color": "#8abeb7"
+	    },
+	    "hljs-meta": {
+	        "color": "#f99157"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-type": {
+	        "color": "#cc99cc"
+	    },
+	    "hljs-section": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-deletion": {
+	        "color": "#dc322f"
+	    },
+	    "hljs-subst": {
+	        "color": "#f99157"
+	    },
+	    "hljs-addition": {
+	        "color": "#cc99cc"
+	    },
+	    "hljs-name": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-variable": {
+	        "color": "#ffcc66"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#cc99cc"
+	    },
+	    "hljs-class .hljs-title": {
+	        "color": "#ffcc66"
+	    },
+	    "hljs-bullet": {
+	        "color": "#f99157"
+	    },
+	    "hljs-number": {
+	        "color": "#f99157"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#ffcc66"
+	    },
+	    "hljs-symbol": {
+	        "color": "#f99157"
+	    },
+	    "hljs-attribute": {
+	        "color": "#81a2be"
+	    },
+	    "hljs-formula": {
+	        "background": "#eee8d5"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#f99157"
+	    },
+	    "hljs-attr": {
+	        "color": "#81a2be"
+	    },
+	    "hljs-keyword": {
+	        "color": "#cc99cc"
+	    },
+	    "hljs-literal": {
+	        "color": "#cc99cc"
+	    },
+	    "hljs-comment": {
+	        "color": "#969896",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-quote": {
+	        "color": "#969896",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-doctag": {
+	        "color": "#8abeb7"
+	    },
+	    "hljs-built_in": {
+	        "color": "#b5bd68"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#ffcc66"
+	    },
+	    "hljs-link": {
+	        "color": "#f99157"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    }
+	};
+
+/***/ },
+/* 396 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs": {
+	        "color": "#3e5915"
+	    },
+	    "hljs-string": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-meta": {
+	        "color": "#e60415"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-type": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-section": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-deletion": {
+	        "color": "#e60415"
+	    },
+	    "hljs-subst": {
+	        "color": "#3e5915"
+	    },
+	    "hljs-addition": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-bullet": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-variable": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-selector-tag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-name": {
+	        "fontWeight": "bold"
+	    },
+	    "re": {
+	        "background": "#f6f6ae url(./school-book.png)",
+	        "borderTop": "solid 2px #d2e8b9",
+	        "borderBottom": "solid 1px #d2e8b9"
+	    },
+	    "hljs-symbol": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-selector-id": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-attribute": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-keyword": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-literal": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-comment": {
+	        "color": "#e60415"
+	    },
+	    "hljs-quote": {
+	        "color": "#e60415"
+	    },
+	    "hljs-doctag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-built_in": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-link": {
+	        "color": "#2c009f"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    }
+	};
+
+/***/ },
+/* 397 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-title": {
+	        "color": "#268bd2"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "background": "#002b36",
+	        "color": "#839496"
+	    },
+	    "hljs-string": {
+	        "color": "#2aa198"
+	    },
+	    "hljs-regexp": {
+	        "color": "#2aa198"
+	    },
+	    "hljs-meta": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-type": {
+	        "color": "#b58900"
+	    },
+	    "hljs-section": {
+	        "color": "#268bd2"
+	    },
+	    "hljs-deletion": {
+	        "color": "#dc322f"
+	    },
+	    "hljs-subst": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-addition": {
+	        "color": "#859900"
+	    },
+	    "hljs-name": {
+	        "color": "#268bd2"
+	    },
+	    "hljs-meta .hljs-meta-string": {
+	        "color": "#2aa198"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#859900"
+	    },
+	    "hljs-class .hljs-title": {
+	        "color": "#b58900"
+	    },
+	    "hljs-variable": {
+	        "color": "#b58900"
+	    },
+	    "hljs-bullet": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-number": {
+	        "color": "#2aa198"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#268bd2"
+	    },
+	    "hljs-symbol": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-attribute": {
+	        "color": "#b58900"
+	    },
+	    "hljs-formula": {
+	        "background": "#073642"
+	    },
+	    "hljs-attr": {
+	        "color": "#b58900"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-keyword": {
+	        "color": "#859900"
+	    },
+	    "hljs-literal": {
+	        "color": "#2aa198"
+	    },
+	    "hljs-meta .hljs-keyword": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-comment": {
+	        "color": "#586e75"
+	    },
+	    "hljs-quote": {
+	        "color": "#586e75"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#268bd2"
+	    },
+	    "hljs-doctag": {
+	        "color": "#2aa198"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#b58900"
+	    },
+	    "hljs-built_in": {
+	        "color": "#dc322f"
+	    },
+	    "hljs-link": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 398 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-title": {
+	        "color": "#268bd2"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "background": "#fdf6e3",
+	        "color": "#657b83"
+	    },
+	    "hljs-string": {
+	        "color": "#2aa198"
+	    },
+	    "hljs-regexp": {
+	        "color": "#2aa198"
+	    },
+	    "hljs-meta": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-type": {
+	        "color": "#b58900"
+	    },
+	    "hljs-section": {
+	        "color": "#268bd2"
+	    },
+	    "hljs-deletion": {
+	        "color": "#dc322f"
+	    },
+	    "hljs-subst": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-addition": {
+	        "color": "#859900"
+	    },
+	    "hljs-name": {
+	        "color": "#268bd2"
+	    },
+	    "hljs-meta .hljs-meta-string": {
+	        "color": "#2aa198"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#859900"
+	    },
+	    "hljs-class .hljs-title": {
+	        "color": "#b58900"
+	    },
+	    "hljs-variable": {
+	        "color": "#b58900"
+	    },
+	    "hljs-bullet": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-number": {
+	        "color": "#2aa198"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#268bd2"
+	    },
+	    "hljs-symbol": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-attribute": {
+	        "color": "#b58900"
+	    },
+	    "hljs-formula": {
+	        "background": "#eee8d5"
+	    },
+	    "hljs-attr": {
+	        "color": "#b58900"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-keyword": {
+	        "color": "#859900"
+	    },
+	    "hljs-literal": {
+	        "color": "#2aa198"
+	    },
+	    "hljs-meta .hljs-keyword": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-comment": {
+	        "color": "#93a1a1"
+	    },
+	    "hljs-quote": {
+	        "color": "#93a1a1"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#268bd2"
+	    },
+	    "hljs-doctag": {
+	        "color": "#2aa198"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#b58900"
+	    },
+	    "hljs-built_in": {
+	        "color": "#dc322f"
+	    },
+	    "hljs-link": {
+	        "color": "#cb4b16"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 399 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#89bdff"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "background": "#000",
+	        "color": "#f8f8f8"
+	    },
+	    "hljs-string": {
+	        "color": "#65b042"
+	    },
+	    "hljs-regexp": {
+	        "color": "#e9c062"
+	    },
+	    "hljs-meta": {
+	        "color": "#8996a8"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-type": {
+	        "color": "#e28964"
+	    },
+	    "hljs-section": {
+	        "color": "#89bdff"
+	    },
+	    "hljs-deletion": {
+	        "backgroundColor": "#420e09",
+	        "color": "#f8f8f8"
+	    },
+	    "hljs-subst": {
+	        "color": "#daefa3"
+	    },
+	    "hljs-addition": {
+	        "backgroundColor": "#253b22",
+	        "color": "#f8f8f8"
+	    },
+	    "hljs-name": {
+	        "color": "#89bdff"
+	    },
+	    "hljs-class .hljs-title": {
+	        "textDecoration": "underline"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#e28964"
+	    },
+	    "hljs-bullet": {
+	        "color": "#3387cc"
+	    },
+	    "hljs-variable": {
+	        "color": "#3e87e3"
+	    },
+	    "hljs-params": {
+	        "color": "#3e87e3"
+	    },
+	    "hljs-number": {
+	        "color": "#3387cc"
+	    },
+	    "hljs-symbol": {
+	        "color": "#3387cc"
+	    },
+	    "hljs-formula": {
+	        "backgroundColor": "#0e2231",
+	        "color": "#f8f8f8",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-attribute": {
+	        "color": "#cda869"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#8b98ab"
+	    },
+	    "hljs-tag": {
+	        "color": "#89bdff"
+	    },
+	    "hljs-keyword": {
+	        "color": "#e28964"
+	    },
+	    "hljs-comment": {
+	        "color": "#aeaeae",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-quote": {
+	        "color": "#aeaeae",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#9b703f"
+	    },
+	    "hljs-doctag": {
+	        "textDecoration": "underline"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#3e87e3"
+	    },
+	    "hljs-link": {
+	        "color": "#e9c062"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 400 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#bbdaff"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#002451",
+	        "color": "white",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#ff9da4"
+	    },
+	    "hljs-meta": {
+	        "color": "#ffc58f"
+	    },
+	    "hljs-string": {
+	        "color": "#d1f1a9"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#ffc58f"
+	    },
+	    "hljs-type": {
+	        "color": "#ffc58f"
+	    },
+	    "hljs-section": {
+	        "color": "#bbdaff"
+	    },
+	    "hljs-deletion": {
+	        "color": "#ff9da4"
+	    },
+	    "hljs-addition": {
+	        "color": "#d1f1a9"
+	    },
+	    "hljs-name": {
+	        "color": "#ff9da4"
+	    },
+	    "hljs-variable": {
+	        "color": "#ff9da4"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#ebbbff"
+	    },
+	    "hljs-bullet": {
+	        "color": "#d1f1a9"
+	    },
+	    "hljs-params": {
+	        "color": "#ffc58f"
+	    },
+	    "hljs-number": {
+	        "color": "#ffc58f"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#ff9da4"
+	    },
+	    "hljs-symbol": {
+	        "color": "#d1f1a9"
+	    },
+	    "hljs-attribute": {
+	        "color": "#ffeead"
+	    },
+	    "hljs-tag": {
+	        "color": "#ff9da4"
+	    },
+	    "hljs-keyword": {
+	        "color": "#ebbbff"
+	    },
+	    "hljs-literal": {
+	        "color": "#ffc58f"
+	    },
+	    "hljs-comment": {
+	        "color": "#7285b7"
+	    },
+	    "hljs-quote": {
+	        "color": "#7285b7"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#ff9da4"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#ff9da4"
+	    },
+	    "hljs-built_in": {
+	        "color": "#ffc58f"
+	    },
+	    "hljs-link": {
+	        "color": "#ffc58f"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 401 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#7aa6da"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "black",
+	        "color": "#eaeaea",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#d54e53"
+	    },
+	    "hljs-meta": {
+	        "color": "#e78c45"
+	    },
+	    "hljs-string": {
+	        "color": "#b9ca4a"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#e78c45"
+	    },
+	    "hljs-type": {
+	        "color": "#e78c45"
+	    },
+	    "hljs-section": {
+	        "color": "#7aa6da"
+	    },
+	    "hljs-deletion": {
+	        "color": "#d54e53"
+	    },
+	    "hljs-addition": {
+	        "color": "#b9ca4a"
+	    },
+	    "hljs-name": {
+	        "color": "#d54e53"
+	    },
+	    "hljs-variable": {
+	        "color": "#d54e53"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#c397d8"
+	    },
+	    "hljs-bullet": {
+	        "color": "#b9ca4a"
+	    },
+	    "hljs-params": {
+	        "color": "#e78c45"
+	    },
+	    "hljs-number": {
+	        "color": "#e78c45"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#d54e53"
+	    },
+	    "hljs-symbol": {
+	        "color": "#b9ca4a"
+	    },
+	    "hljs-attribute": {
+	        "color": "#e7c547"
+	    },
+	    "hljs-tag": {
+	        "color": "#d54e53"
+	    },
+	    "hljs-keyword": {
+	        "color": "#c397d8"
+	    },
+	    "hljs-literal": {
+	        "color": "#e78c45"
+	    },
+	    "hljs-comment": {
+	        "color": "#969896"
+	    },
+	    "hljs-quote": {
+	        "color": "#969896"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#d54e53"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#d54e53"
+	    },
+	    "hljs-built_in": {
+	        "color": "#e78c45"
+	    },
+	    "hljs-link": {
+	        "color": "#e78c45"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 402 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#6699cc"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#2d2d2d",
+	        "color": "#cccccc",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#f2777a"
+	    },
+	    "hljs-meta": {
+	        "color": "#f99157"
+	    },
+	    "hljs-string": {
+	        "color": "#99cc99"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#f99157"
+	    },
+	    "hljs-type": {
+	        "color": "#f99157"
+	    },
+	    "hljs-section": {
+	        "color": "#6699cc"
+	    },
+	    "hljs-deletion": {
+	        "color": "#f2777a"
+	    },
+	    "hljs-addition": {
+	        "color": "#99cc99"
+	    },
+	    "hljs-name": {
+	        "color": "#f2777a"
+	    },
+	    "hljs-variable": {
+	        "color": "#f2777a"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#cc99cc"
+	    },
+	    "hljs-bullet": {
+	        "color": "#99cc99"
+	    },
+	    "hljs-params": {
+	        "color": "#f99157"
+	    },
+	    "hljs-number": {
+	        "color": "#f99157"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#f2777a"
+	    },
+	    "hljs-symbol": {
+	        "color": "#99cc99"
+	    },
+	    "hljs-attribute": {
+	        "color": "#ffcc66"
+	    },
+	    "hljs-tag": {
+	        "color": "#f2777a"
+	    },
+	    "hljs-keyword": {
+	        "color": "#cc99cc"
+	    },
+	    "hljs-literal": {
+	        "color": "#f99157"
+	    },
+	    "hljs-comment": {
+	        "color": "#999999"
+	    },
+	    "hljs-quote": {
+	        "color": "#999999"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#f2777a"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#f2777a"
+	    },
+	    "hljs-built_in": {
+	        "color": "#f99157"
+	    },
+	    "hljs-link": {
+	        "color": "#f99157"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
 /* 403 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#81a2be"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "#1d1f21",
+	        "color": "#c5c8c6",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#cc6666"
+	    },
+	    "hljs-meta": {
+	        "color": "#de935f"
+	    },
+	    "hljs-string": {
+	        "color": "#b5bd68"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#de935f"
+	    },
+	    "hljs-type": {
+	        "color": "#de935f"
+	    },
+	    "hljs-section": {
+	        "color": "#81a2be"
+	    },
+	    "hljs-deletion": {
+	        "color": "#cc6666"
+	    },
+	    "hljs-addition": {
+	        "color": "#b5bd68"
+	    },
+	    "hljs-name": {
+	        "color": "#cc6666"
+	    },
+	    "hljs-variable": {
+	        "color": "#cc6666"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#b294bb"
+	    },
+	    "hljs-bullet": {
+	        "color": "#b5bd68"
+	    },
+	    "hljs-params": {
+	        "color": "#de935f"
+	    },
+	    "hljs-number": {
+	        "color": "#de935f"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#cc6666"
+	    },
+	    "hljs-symbol": {
+	        "color": "#b5bd68"
+	    },
+	    "hljs-attribute": {
+	        "color": "#f0c674"
+	    },
+	    "hljs-tag": {
+	        "color": "#cc6666"
+	    },
+	    "hljs-keyword": {
+	        "color": "#b294bb"
+	    },
+	    "hljs-literal": {
+	        "color": "#de935f"
+	    },
+	    "hljs-comment": {
+	        "color": "#969896"
+	    },
+	    "hljs-quote": {
+	        "color": "#969896"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#cc6666"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#cc6666"
+	    },
+	    "hljs-built_in": {
+	        "color": "#de935f"
+	    },
+	    "hljs-link": {
+	        "color": "#de935f"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 404 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#4271ae"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "background": "white",
+	        "color": "#4d4d4c",
+	        "padding": "0.5em"
+	    },
+	    "hljs-regexp": {
+	        "color": "#c82829"
+	    },
+	    "hljs-meta": {
+	        "color": "#f5871f"
+	    },
+	    "hljs-string": {
+	        "color": "#718c00"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#f5871f"
+	    },
+	    "hljs-type": {
+	        "color": "#f5871f"
+	    },
+	    "hljs-section": {
+	        "color": "#4271ae"
+	    },
+	    "hljs-deletion": {
+	        "color": "#c82829"
+	    },
+	    "hljs-addition": {
+	        "color": "#718c00"
+	    },
+	    "hljs-name": {
+	        "color": "#c82829"
+	    },
+	    "hljs-variable": {
+	        "color": "#c82829"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#8959a8"
+	    },
+	    "hljs-bullet": {
+	        "color": "#718c00"
+	    },
+	    "hljs-params": {
+	        "color": "#f5871f"
+	    },
+	    "hljs-number": {
+	        "color": "#f5871f"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#c82829"
+	    },
+	    "hljs-symbol": {
+	        "color": "#718c00"
+	    },
+	    "hljs-attribute": {
+	        "color": "#eab700"
+	    },
+	    "hljs-tag": {
+	        "color": "#c82829"
+	    },
+	    "hljs-keyword": {
+	        "color": "#8959a8"
+	    },
+	    "hljs-literal": {
+	        "color": "#f5871f"
+	    },
+	    "hljs-comment": {
+	        "color": "#8e908c"
+	    },
+	    "hljs-quote": {
+	        "color": "#8e908c"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#c82829"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#c82829"
+	    },
+	    "hljs-built_in": {
+	        "color": "#f5871f"
+	    },
+	    "hljs-link": {
+	        "color": "#f5871f"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 405 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-selector-attr": {
+	        "color": "#2b91af"
+	    },
+	    "hljs-title": {
+	        "color": "#a31515"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "background": "white",
+	        "color": "black"
+	    },
+	    "hljs-string": {
+	        "color": "#a31515"
+	    },
+	    "hljs-meta": {
+	        "color": "#2b91af"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#a31515"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-type": {
+	        "color": "#a31515"
+	    },
+	    "hljs-section": {
+	        "color": "#a31515"
+	    },
+	    "hljs-deletion": {
+	        "color": "#2b91af"
+	    },
+	    "hljs-addition": {
+	        "color": "#a31515"
+	    },
+	    "hljs-name": {
+	        "color": "#00f"
+	    },
+	    "hljs-variable": {
+	        "color": "#008000"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#00f"
+	    },
+	    "hljs-bullet": {
+	        "color": "#00b0e8"
+	    },
+	    "hljs-symbol": {
+	        "color": "#00b0e8"
+	    },
+	    "hljs-attribute": {
+	        "color": "#a31515"
+	    },
+	    "hljs-selector-pseudo": {
+	        "color": "#2b91af"
+	    },
+	    "hljs-attr": {
+	        "color": "#f00"
+	    },
+	    "hljs-tag": {
+	        "color": "#00f"
+	    },
+	    "hljs-keyword": {
+	        "color": "#00f"
+	    },
+	    "hljs-literal": {
+	        "color": "#a31515"
+	    },
+	    "hljs-comment": {
+	        "color": "#008000"
+	    },
+	    "hljs-quote": {
+	        "color": "#008000"
+	    },
+	    "hljs-doctag": {
+	        "color": "#808080"
+	    },
+	    "hljs-built_in": {
+	        "color": "#00f"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#a31515"
+	    },
+	    "hljs-link": {
+	        "color": "#00b0e8"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 406 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#1c00cf"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "background": "#fff",
+	        "color": "black"
+	    },
+	    "hljs-string": {
+	        "color": "#c41a16"
+	    },
+	    "hljs-regexp": {
+	        "color": "#080"
+	    },
+	    "hljs-meta": {
+	        "color": "#1c00cf"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#5c2699"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-type": {
+	        "color": "#5c2699"
+	    },
+	    "hljs-section": {
+	        "color": "#5c2699"
+	    },
+	    "hljs-deletion": {
+	        "backgroundColor": "#ffc8bd"
+	    },
+	    "hljs-subst": {
+	        "color": "#000"
+	    },
+	    "hljs-addition": {
+	        "backgroundColor": "#baeeba"
+	    },
+	    "hljs-name": {
+	        "color": "#008"
+	    },
+	    "hljs-variable": {
+	        "color": "#660"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#aa0d91"
+	    },
+	    "hljs-bullet": {
+	        "color": "#1c00cf"
+	    },
+	    "hljs-params": {
+	        "color": "#5c2699"
+	    },
+	    "hljs-class .hljs-title": {
+	        "color": "#5c2699"
+	    },
+	    "hljs-number": {
+	        "color": "#1c00cf"
+	    },
+	    "hljs-symbol": {
+	        "color": "#1c00cf"
+	    },
+	    "hljs-formula": {
+	        "backgroundColor": "#eee",
+	        "fontStyle": "italic"
+	    },
+	    "hljs-attribute": {
+	        "color": "#000"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#9b703f"
+	    },
+	    "hljs-attr": {
+	        "color": "#5c2699"
+	    },
+	    "hljs-tag": {
+	        "color": "#1c00cf"
+	    },
+	    "hljs-keyword": {
+	        "color": "#aa0d91"
+	    },
+	    "hljs-literal": {
+	        "color": "#aa0d91"
+	    },
+	    "hljs-comment": {
+	        "color": "#006a00"
+	    },
+	    "hljs-quote": {
+	        "color": "#006a00"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#9b703f"
+	    },
+	    "hljs-doctag": {
+	        "fontWeight": "bold"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#660"
+	    },
+	    "hljs-built_in": {
+	        "color": "#5c2699"
+	    },
+	    "hljs-link": {
+	        "color": "#080"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    }
+	};
+
+/***/ },
+/* 407 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.default = {
+	    "hljs-title": {
+	        "color": "#efef8f"
+	    },
+	    "hljs": {
+	        "display": "block",
+	        "overflowX": "auto",
+	        "padding": "0.5em",
+	        "background": "#3f3f3f",
+	        "color": "#dcdcdc"
+	    },
+	    "hljs-template-tag": {
+	        "color": "#dcdcdc"
+	    },
+	    "hljs-string": {
+	        "color": "#cc9393"
+	    },
+	    "hljs-meta": {
+	        "color": "#7f9f7f"
+	    },
+	    "hljs-emphasis": {
+	        "fontStyle": "italic"
+	    },
+	    "hljs-builtin-name": {
+	        "color": "#cc9393"
+	    },
+	    "hljs-type": {
+	        "color": "#efef8f"
+	    },
+	    "hljs-section": {
+	        "color": "#efef8f"
+	    },
+	    "hljs-deletion": {
+	        "color": "#cc9393"
+	    },
+	    "hljs-subst": {
+	        "color": "#8f8f8f"
+	    },
+	    "hljs-addition": {
+	        "color": "#7f9f7f"
+	    },
+	    "hljs-name": {
+	        "color": "#efef8f"
+	    },
+	    "hljs-variable": {
+	        "color": "#efdcbc"
+	    },
+	    "hljs-selector-tag": {
+	        "color": "#e3ceab"
+	    },
+	    "hljs-bullet": {
+	        "color": "#dca3a3"
+	    },
+	    "hljs-number": {
+	        "color": "#8cd0d3"
+	    },
+	    "hljs-selector-id": {
+	        "color": "#efef8f"
+	    },
+	    "hljs-symbol": {
+	        "color": "#dca3a3"
+	    },
+	    "hljs-attribute": {
+	        "color": "#efdcbc"
+	    },
+	    "hljs-tag": {
+	        "color": "#e3ceab"
+	    },
+	    "hljs-keyword": {
+	        "color": "#e3ceab"
+	    },
+	    "hljs-literal": {
+	        "color": "#efefaf"
+	    },
+	    "hljs-comment": {
+	        "color": "#7f9f7f"
+	    },
+	    "hljs-quote": {
+	        "color": "#7f9f7f"
+	    },
+	    "hljs-selector-class": {
+	        "color": "#efef8f"
+	    },
+	    "hljs-template-variable": {
+	        "color": "#efdcbc"
+	    },
+	    "hljs-built_in": {
+	        "color": "#cc9393"
+	    },
+	    "hljs-link": {
+	        "color": "#dca3a3"
+	    },
+	    "hljs-strong": {
+	        "fontWeight": "bold"
+	    }
+	};
+
+/***/ },
+/* 408 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -45313,7 +46666,7 @@
 	};
 
 /***/ },
-/* 404 */
+/* 409 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/* FileSaver.js
@@ -45567,7 +46920,7 @@
 	
 	if (typeof module !== "undefined" && module.exports) {
 	  module.exports.saveAs = saveAs;
-	} else if (("function" !== "undefined" && __webpack_require__(405) !== null) && (__webpack_require__(406) != null)) {
+	} else if (("function" !== "undefined" && __webpack_require__(410) !== null) && (__webpack_require__(411) != null)) {
 	  !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = function() {
 	    return saveAs;
 	  }.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -45575,14 +46928,14 @@
 
 
 /***/ },
-/* 405 */
+/* 410 */
 /***/ function(module, exports) {
 
 	module.exports = function() { throw new Error("define cannot be used indirect"); };
 
 
 /***/ },
-/* 406 */
+/* 411 */
 /***/ function(module, exports) {
 
 	/* WEBPACK VAR INJECTION */(function(__webpack_amd_options__) {module.exports = __webpack_amd_options__;
