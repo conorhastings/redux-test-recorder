@@ -21084,7 +21084,7 @@
 /* 179 */
 /***/ function(module, exports) {
 
-	"use strict";
+	'use strict';
 	
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
@@ -21096,7 +21096,10 @@
 	  var reducer = _ref.reducer;
 	  var equalityFunction = _ref.equalityFunction;
 	
-	  return "var test = require('tape');\n" + imports + "\n" + reducer + "\nvar equality = " + equalityFunction + ";\n\ntest('expected state returned for each action', function(assert) {\n  var actions = " + JSON.stringify(actions, null, 2) + ";\n  actions.forEach(function(action, index) {\n    var result = reducer(action.prevState, action.action);\n    assert.ok(equality(result, action.nextState), action.action.type + '(action index ' + index +') correctly updated state');\n  });\n  assert.end();\n});";
+	  var asserts = actions.map(function (action, index) {
+	    return 'test(\'' + action.action.type + ' (action index ' + index + ') should correctly update state\', function(assert) {\n    var action = actions[' + index + '];\n    var result = reducer(action.prevState, action.action);\n    assert.ok(equality(result, action.nextState), \'state updated correctly\');\n    assert.end();\n  });';
+	  }).join('\n\n');
+	  return 'var test = require(\'tape\');\n' + imports + '\n' + reducer + '\nvar equality = ' + equalityFunction + ';\nvar actions = ' + JSON.stringify(actions, null, 2) + ';\n\n' + asserts;
 	}
 
 /***/ },
