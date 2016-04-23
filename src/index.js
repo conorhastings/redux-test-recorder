@@ -11,7 +11,6 @@ const reduxRecord = function({
   testLib = 'tape',
   numTestsToSave = 5
 }) { 
-  let initState;
   let actions = [];
   let recording = false;
   let showingTest = false;
@@ -32,7 +31,6 @@ const reduxRecord = function({
   const hideTest = () => {
     actions = [];
     showingTest = false;
-    initState = undefined;
   };
   const genTest = typeof testLib === 'function' ? testLib : createTest;
   if (typeof testLib !== 'string' && typeof testLib !== 'function') {
@@ -50,7 +48,6 @@ const reduxRecord = function({
           actions,
           imports,
           equalityFunction,
-          state: initState,
           reducer: stringifiedReducer,
           testLib: testLib
         })
@@ -74,18 +71,16 @@ const reduxRecord = function({
   const getNumTests = () => prevTests.length;
 
   const middleware = ({getState}) => (next) => (action) => {
-    if (initState === undefined && recording) {
-      initState = stateKey ? getState()[stateKey] : getState();
-      if (typeof initState === 'object') {
-        initState = JSON.stringify(initState, null, 4);
-      }
-    }
-    next(action);
     if (recording) {
+      const prevState = stateKey ? getState()[stateKey] : getState();
+      next(action);
       const nextState = stateKey ? getState()[stateKey] : getState();
       if (!actionSubset || actionSubset[action.type]) {
-        actions.push({action, nextState});
+        actions.push({action, prevState, nextState});
       }
+    }
+    else {
+      next(action);
     }
   };
   const props = { getRecordingStatus, startRecord, stopRecord, getTest, shouldShowTest, hideTest, getNumTests };
