@@ -21097,7 +21097,7 @@
 	  var equalityFunction = _ref.equalityFunction;
 	
 	  var asserts = actions.map(function (action, index) {
-	    return 'test(\'' + action.action.type + ' (action index ' + index + ') should correctly update state\', function(assert) {\n    var action = actions[' + index + '];\n    var result = reducer(action.prevState, action.action);\n    assert.ok(equality(result, action.nextState), \'state updated correctly\');\n    assert.end();\n  });';
+	    return 'test(\'' + action.action.type + ' (action index ' + index + ') should correctly update state\', function(assert) {\n  var action = actions[' + index + '];\n  var result = reducer(action.prevState, action.action);\n  assert.ok(equality(result, action.nextState), \'state updated correctly\');\n  assert.end();\n});';
 	  }).join('\n\n');
 	  return 'var test = require(\'tape\');\n' + imports + '\n' + reducer + '\nvar equality = ' + equalityFunction + ';\nvar actions = ' + JSON.stringify(actions, null, 2) + ';\n\n' + asserts;
 	}
@@ -21119,7 +21119,7 @@
 	  var equalityFunction = _ref.equalityFunction;
 	
 	  var asserts = actions.map(function (action, index) {
-	    return 'test(\'' + action.action.type + ' (action index ' + index + ') should correctly update state\', function(t) {\n    var action = actions[' + index + '];\n    var result = reducer(action.prevState, action.action);\n    t.ok(equality(result, action.nextState));\n  });';
+	    return 'test(\'' + action.action.type + ' (action index ' + index + ') should correctly update state\', function(t) {\n  var action = actions[' + index + '];\n  var result = reducer(action.prevState, action.action);\n  t.ok(equality(result, action.nextState));\n});';
 	  }).join('\n\n');
 	  return 'var test = require(\'ava\');\n' + imports + '\n' + reducer + '\nvar equality = ' + equalityFunction + ';\nvar actions = ' + JSON.stringify(actions, null, 2) + ';\n\n' + asserts;
 	}
@@ -21141,7 +21141,7 @@
 	  var equalityFunction = _ref.equalityFunction;
 	
 	  var its = actions.map(function (action, index) {
-	    return '  it(\'' + action.action.type + ' (action index ' + index + ') should correctly update state\', function() {\n    var action = actions[' + index + '];\n    var result = reducer(active.prevState, action.action);\n    assert.ok(equality(result, action.nextState));\n  });\n';
+	    return '  it(\'' + action.action.type + ' (action index ' + index + ') should correctly update state\', function() {\n  var action = actions[' + index + '];\n  var result = reducer(active.prevState, action.action);\n  assert.ok(equality(result, action.nextState));\n});\n';
 	  }).join('\n');
 	  return 'var assert = require(\'assert\');\n' + imports + '\n' + reducer + '\n\nvar equality = ' + equalityFunction + ';\n\ndescribe(\'redux reducer test\', function() {\n  var actions;\n  before(function() {\n    actions = ' + JSON.stringify(actions, null, 2) + ';\n  });\n\n  after(function() {\n    actions = [];\n  });\n\n' + its + '\n});\n';
 	}
