@@ -20971,8 +20971,13 @@
 	    return showingTest;
 	  };
 	  var hideTest = function hideTest() {
-	    actions = [];
-	    showingTest = false;
+	    return showingTest = false;
+	  };
+	  var showTest = function showTest() {
+	    return showingTest = true;
+	  };
+	  var emptyActions = function emptyActions() {
+	    return actions = [];
 	  };
 	  var genTest = typeof testLib === 'function' ? testLib : _createTest2.default;
 	  if (typeof testLib !== 'string' && typeof testLib !== 'function') {
@@ -21027,7 +21032,17 @@
 	      };
 	    };
 	  };
-	  var props = { getRecordingStatus: getRecordingStatus, startRecord: startRecord, stopRecord: stopRecord, getTest: getTest, shouldShowTest: shouldShowTest, hideTest: hideTest, getNumTests: getNumTests };
+	  var props = {
+	    getRecordingStatus: getRecordingStatus,
+	    startRecord: startRecord,
+	    stopRecord: stopRecord,
+	    getTest: getTest,
+	    shouldShowTest: shouldShowTest,
+	    hideTest: hideTest,
+	    showTest: showTest,
+	    emptyActions: emptyActions,
+	    getNumTests: getNumTests
+	  };
 	  return { middleware: middleware, props: props };
 	};
 	exports.TestRecorder = _testRecorder2.default;
@@ -21170,6 +21185,10 @@
 	
 	var _displayTest2 = _interopRequireDefault(_displayTest);
 	
+	var _showTests = __webpack_require__(412);
+	
+	var _showTests2 = _interopRequireDefault(_showTests);
+	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -21221,6 +21240,9 @@
 	    key: 'hideTest',
 	    value: function hideTest() {
 	      this.props.hideTest();
+	      if (!this.props.getRecordingStatus()) {
+	        this.props.emptyActions();
+	      }
 	      this.setState({ testIndex: undefined });
 	    }
 	  }, {
@@ -21261,6 +21283,16 @@
 	          hideTest: this.hideTest,
 	          onTabClick: this.onTabClick,
 	          getNumTests: this.props.getNumTests
+	        }),
+	        _react2.default.createElement(_showTests2.default, {
+	          onClick: function onClick() {
+	            if (_this3.props.shouldShowTest()) {
+	              _this3.hideTest();
+	            } else {
+	              _this3.props.showTest();
+	              _this3.forceUpdate();
+	            }
+	          }
 	        })
 	      );
 	    }
@@ -21310,6 +21342,7 @@
 	  var style = makeCircle(50, 'gainsboro');
 	  style.boxShadow = '2px 2px 5px #888888';
 	  style.zIndex = 99;
+	  style.right = '100px';
 	  var innerCirlcleStyle = makeCircle(25, 'red');
 	  if (!hovered) {
 	    innerCirlcleStyle.opacity = 0.3;
@@ -21446,7 +21479,7 @@
 	    value: function onClick(_ref) {
 	      var target = _ref.target;
 	
-	      if (this.container && !this.container.contains(target) && this.props.shouldShowTest() && target.className !== 'redux-test-recorder-record-button' && target.className !== 'redux-test-recorder-tabs' && target.className !== 'redux-test-recorder-tab') {
+	      if (this.container && !this.container.contains(target) && this.props.shouldShowTest() && target.className !== 'redux-test-recorder-record-button' && target.className !== 'redux-test-recorder-tabs' && target.className !== 'redux-test-recorder-tab' && target.className !== 'redux-test-recorder-show-tests' && target.className.baseVal !== 'redux-test-recorder-show-tests-svg' && target.parentNode.className.baseVal !== 'redux-test-recorder-show-tests-svg') {
 	        this.props.hideTest();
 	      }
 	    }
@@ -21456,7 +21489,6 @@
 	      e.preventDefault();
 	      var hasTestIndex = this.props.testIndex !== null && this.props.testIndex !== undefined;
 	      var suffix = hasTestIndex ? '-' + (this.props.testIndex + 1) : '';
-	      console.log(suffix);
 	      var file = new Blob([this.props.getTest(this.props.testIndex)], { type: 'text/plain;charset=utf-8' });
 	      saveAs(file, 'test' + suffix + '.js');
 	    }
@@ -46944,6 +46976,45 @@
 	/* WEBPACK VAR INJECTION */(function(__webpack_amd_options__) {module.exports = __webpack_amd_options__;
 	
 	/* WEBPACK VAR INJECTION */}.call(exports, {}))
+
+/***/ },
+/* 412 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	exports.default = ShowTests;
+	
+	var _react = __webpack_require__(13);
+	
+	var _react2 = _interopRequireDefault(_react);
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	var style = {
+	  position: 'absolute',
+	  zIndex: 99,
+	  bottom: '25px',
+	  right: '25px',
+	  cursor: 'pointer'
+	};
+	
+	function ShowTests(_ref) {
+	  var onClick = _ref.onClick;
+	
+	  return _react2.default.createElement(
+	    'div',
+	    { style: style, onClick: onClick, className: 'redux-test-recorder-show-tests' },
+	    _react2.default.createElement(
+	      'svg',
+	      { className: 'redux-test-recorder-show-tests-svg', width: '50', height: '50', viewBox: '0 0 50 50' },
+	      _react2.default.createElement('path', { d: 'M25 9c-.14 0-.275.034-.406.094l-22 10C2.237 19.256 2 19.608 2 20v6c0 .34.183.66.47.844.285.183.627.204.936.062L25 17.094l21.594 9.812c.132.06.265.094.406.094.19 0 .367-.05.53-.156.287-.185.47-.504.47-.844v-6c0-.392-.236-.744-.594-.906l-22-10C25.276 9.034 25.14 9 25 9zm0 14c-.14 0-.275.034-.406.094l-22 10C2.237 33.256 2 33.607 2 34v6c0 .34.183.66.47.844.285.183.627.205.936.062L25 31.094l21.594 9.812c.132.06.265.094.406.094.19 0 .367-.05.53-.156.287-.185.47-.504.47-.844v-6c0-.393-.236-.744-.594-.906l-22-10c-.13-.06-.265-.094-.406-.094z' })
+	    )
+	  );
+	}
 
 /***/ }
 /******/ ]);
