@@ -9,7 +9,8 @@ const reduxRecord = function({
   equality = '(result, nextState) => result === nextState',
   imports = '',
   testLib = 'tape',
-  numTestsToSave = 5
+  numTestsToSave = 5,
+  includeShowTestsButton = false
 }) { 
   let actions = [];
   let recording = false;
@@ -91,7 +92,8 @@ const reduxRecord = function({
     hideTest, 
     showTest,
     emptyActions,
-    getNumTests 
+    getNumTests ,
+    includeShowTestsButton
   };
   return { middleware, props };
 };

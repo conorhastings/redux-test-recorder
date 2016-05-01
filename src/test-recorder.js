@@ -48,24 +48,9 @@ class TestRecorder extends React.Component {
   }
 
   render() {
-    return (
-      <div>
-        <Record 
-          onClick={recordingStatus => this.onClick(recordingStatus)} 
-          hovered={this.state.hovered} 
-          onMouseOver={() => this.setState({hovered: true})}
-          onMouseOut={() => this.setState({hovered: false})}
-          getRecordingStatus={this.props.getRecordingStatus}
-        />
-        <DisplayTest 
-          getTest={this.props.getTest}
-          testIndex={this.state.testIndex}
-          shouldShowTest={this.props.shouldShowTest}
-          onKeyPress={(e) => this.onKeyPress(e)}
-          hideTest={this.hideTest}
-          onTabClick={this.onTabClick}
-          getNumTests={this.props.getNumTests}
-        />
+    let showTests;
+    if (this.props.includeShowTestsButton) {
+      showTests = (
         <ShowTests 
           onClick={() => {
             if (this.props.shouldShowTest()) {
@@ -77,6 +62,28 @@ class TestRecorder extends React.Component {
             }
           }}
         />
+      );
+    }
+    return (
+      <div>
+        <Record 
+          onClick={recordingStatus => this.onClick(recordingStatus)} 
+          hovered={this.state.hovered} 
+          onMouseOver={() => this.setState({hovered: true})}
+          onMouseOut={() => this.setState({hovered: false})}
+          getRecordingStatus={this.props.getRecordingStatus}
+          includeShowTestsButton={this.props.includeShowTestsButton}
+        />
+        <DisplayTest 
+          getTest={this.props.getTest}
+          testIndex={this.state.testIndex}
+          shouldShowTest={this.props.shouldShowTest}
+          onKeyPress={(e) => this.onKeyPress(e)}
+          hideTest={this.hideTest}
+          onTabClick={this.onTabClick}
+          getNumTests={this.props.getNumTests}
+        />
+        {showTests}
       </div>
     );
   }
