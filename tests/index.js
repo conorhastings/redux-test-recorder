@@ -113,6 +113,12 @@ test('shouldShowTest is true after stopRecord is fired and false after hideTest 
   assert.notOk(record3.props.shouldShowTest(), 'should hide test after hideTest is fired');
 });
 
+test('shouldShowTest is true after showTest is fired', assert => {
+  assert.plan(1);
+  record3.props.showTest();
+  assert.ok(record3.props.shouldShowTest(), 'should show test after stopRecord is fired');
+});
+
 
 test('extra imports are included when import arg is given', assert => {
   assert.plan(1);

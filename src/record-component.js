@@ -17,6 +17,7 @@ const Record = ({ getRecordingStatus, onClick, onMouseOver, onMouseOut, hovered 
   let style = makeCircle(50, 'gainsboro');
   style.boxShadow = '2px 2px 5px #888888';
   style.zIndex = 99;
+  style.right = '100px';
   let innerCirlcleStyle = makeCircle(25, 'red');
   if (!hovered) {
     innerCirlcleStyle.opacity = 0.3;

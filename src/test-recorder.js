@@ -1,6 +1,7 @@
 import React from 'react';
 import Record from './record-component';
 import DisplayTest from './display-test';
+import ShowTests from "./show-tests";
 
 class TestRecorder extends React.Component {
   constructor() {
@@ -34,6 +35,9 @@ class TestRecorder extends React.Component {
 
   hideTest() {
     this.props.hideTest();
+    if (!this.props.getRecordingStatus()) {
+      this.props.emptyActions();
+    }
     this.setState({ testIndex: undefined });
   }
 
@@ -47,7 +51,7 @@ class TestRecorder extends React.Component {
     return (
       <div>
         <Record 
-          onClick={(recordingStatus) => this.onClick(recordingStatus)} 
+          onClick={recordingStatus => this.onClick(recordingStatus)} 
           hovered={this.state.hovered} 
           onMouseOver={() => this.setState({hovered: true})}
           onMouseOut={() => this.setState({hovered: false})}
@@ -61,6 +65,17 @@ class TestRecorder extends React.Component {
           hideTest={this.hideTest}
           onTabClick={this.onTabClick}
           getNumTests={this.props.getNumTests}
+        />
+        <ShowTests 
+          onClick={() => {
+            if (this.props.shouldShowTest()) {
+              this.hideTest();
+            }
+            else {
+              this.props.showTest();
+              this.forceUpdate();
+            }
+          }}
         />
       </div>
     );

@@ -73,7 +73,10 @@ export default class DisplayTest extends React.Component {
         this.props.shouldShowTest() &&
         target.className !== 'redux-test-recorder-record-button' &&
         target.className !== 'redux-test-recorder-tabs' &&
-        target.className !== 'redux-test-recorder-tab') {
+        target.className !== 'redux-test-recorder-tab' &&
+        target.className !== 'redux-test-recorder-show-tests' &&
+        target.className.baseVal !== 'redux-test-recorder-show-tests-svg' &&
+        target.parentNode.className.baseVal !== 'redux-test-recorder-show-tests-svg') {
       this.props.hideTest();
     }
   }
@@ -82,7 +85,6 @@ export default class DisplayTest extends React.Component {
     e.preventDefault();
     const hasTestIndex = this.props.testIndex !== null && this.props.testIndex !== undefined;
     const suffix = hasTestIndex ? `-${this.props.testIndex + 1}` : '';
-    console.log(suffix);
     const file = new Blob([this.props.getTest(this.props.testIndex)], {type: 'text/plain;charset=utf-8'});
     saveAs(file, `test${suffix}.js`);
   }

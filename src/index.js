@@ -28,10 +28,9 @@ const reduxRecord = function({
   }
   const getRecordingStatus = () => recording;
   const shouldShowTest = () => showingTest;
-  const hideTest = () => {
-    actions = [];
-    showingTest = false;
-  };
+  const hideTest = () => showingTest = false;
+  const showTest = () => showingTest = true;
+  const emptyActions = () => actions = [];
   const genTest = typeof testLib === 'function' ? testLib : createTest;
   if (typeof testLib !== 'string' && typeof testLib !== 'function') {
     throw new Error('testLib argument must be a string or a function');
@@ -83,7 +82,17 @@ const reduxRecord = function({
       next(action);
     }
   };
-  const props = { getRecordingStatus, startRecord, stopRecord, getTest, shouldShowTest, hideTest, getNumTests };
+  const props = { 
+    getRecordingStatus, 
+    startRecord, 
+    stopRecord, 
+    getTest, 
+    shouldShowTest, 
+    hideTest, 
+    showTest,
+    emptyActions,
+    getNumTests 
+  };
   return { middleware, props };
 };
 export { TestRecorder as TestRecorder };
