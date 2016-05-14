@@ -1,6 +1,5 @@
 ## Redux Test Recorder
 
-**NOTE EXPERIMENTAL, API MAY CHANGE DRAMATICALLY**
 **NOTE YOUR STATE TREE MUST BE SERIALIZABLE**
 
 Redux test recorder is a redux middleware + included component for automagically generating tests for your reducers based on the actions in your app.
