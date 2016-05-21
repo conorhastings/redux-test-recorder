@@ -27,7 +27,9 @@ const reducer = (state = initState, { type, payload }) => {
   return newState;
 }
 
+let state = {};
 const record = reduxRecord({reducer, includeReducer: true});
+const listen = record.props.listen(newState => state = newState);
 const createStoreWithMiddleware = applyMiddleware(record.middleware)(createStore);
 const store = createStoreWithMiddleware(reducer);
 record.props.startRecord();
@@ -35,16 +37,19 @@ store.dispatch(increment());
 store.dispatch(increment());
 store.dispatch(increment());
 store.dispatch(decrement());
-eval(record.props.getTest());
+record.props.createNewTest();
 record.props.stopRecord();
+eval(state[0]);
 record.props.hideTest();
 record.props.startRecord();
 store.dispatch(increment());
+record.props.createNewTest();
 record.props.stopRecord();
-eval(record.props.getTest());
+eval(state.tests[1]);
+listen();
 
 test("generates and stores multiple different tests", assert => {
-  assert.notEqual(record.props.getTest(0), record.props.getTest(1));
+  assert.notEqual(state.tests[0], state.tests[1]);
   assert.end();
 });
 
@@ -75,8 +80,11 @@ const subtract = (state = initState2.subtract, { type, payload }) => {
   }
   return newState;
 }
+
+let state2 = {};
 const combined = combineReducers({add, subtract});
 const record2 = reduxRecord({reducer: add, includeReducer: true, stateKey: 'add', actionSubset: { INCREMENT: 'INCREMENT' }});
+const listen2 = record2.props.listen(newState => state2 = newState);
 const createStoreWithMiddleware2 = applyMiddleware(record2.middleware)(createStore);
 const store2 = createStoreWithMiddleware2(combined);
 record2.props.startRecord();
@@ -84,7 +92,9 @@ store2.dispatch(increment());
 store2.dispatch(increment());
 store2.dispatch(increment());
 store2.dispatch(decrement());
-eval(record2.props.getTest());
+record2.props.createNewTest();
+eval(state2.tests[0]);
+listen2();
 
 const record3 = reduxRecord({
   reducer: add, 
@@ -93,30 +103,43 @@ const record3 = reduxRecord({
 
 test('reducer not included when includeReducer = false', assert => {
   assert.plan(1);
-  const generatedTest = record3.props.getTest();
+  let state = {};
+  const listen = record3.props.listen(s => state = s);
+  record3.props.createNewTest();
+  const generatedTest = state.tests[0];
+  listen();
   assert.ok(generatedTest.includes('/* import reducer from YOUR_REDUCER_LOCATION_HERE */'), "test includes note to import reducer");
 });
 
 test ('startRecord makes getRecordingStatus return true, and calling stop makes false', assert => {
   assert.plan(2);
+  let state = {};
+  const listen = record3.props.listen(s => state = s);
   record3.props.startRecord();
-  assert.ok(record3.props.getRecordingStatus(), 'getRecordingStatus is true after start');
+  assert.ok(state.recording, 'getRecordingStatus is true after start');
   record3.props.stopRecord();
-  assert.notOk(record3.props.getRecordingStatus(), 'getRecordingStatus is false after stop');
+  listen();
+  assert.notOk(state.recording, 'getRecordingStatus is false after stop');
 });
 
 test('shouldShowTest is true after stopRecord is fired and false after hideTest is fired', assert => {
   assert.plan(2);
+  let state = {};
+  const listen = record3.props.listen(s => state = s);
   record3.props.stopRecord();
-  assert.ok(record3.props.shouldShowTest(), 'should show test after stopRecord is fired');
+  assert.ok(state.showingTest, 'should show test after stopRecord is fired');
   record3.props.hideTest();
-  assert.notOk(record3.props.shouldShowTest(), 'should hide test after hideTest is fired');
+  listen();
+  assert.notOk(state.showingTest, 'should hide test after hideTest is fired');
 });
 
 test('shouldShowTest is true after showTest is fired', assert => {
   assert.plan(1);
+  let state = {};
+  const listen = record3.props.listen(s => state = s);
   record3.props.showTest();
-  assert.ok(record3.props.shouldShowTest(), 'should show test after stopRecord is fired');
+  listen();
+  assert.ok(state.showingTest, 'should show test after stopRecord is fired');
 });
 
 
@@ -126,7 +149,8 @@ test('extra imports are included when import arg is given', assert => {
     reducer: add, 
     imports: `var equal = reqire('deep-equal');` 
   });
-  const generatedTest = record4.props.getTest();
+  const generatedTest = record4.props.createNewTest();
+
   assert.ok(generatedTest.includes(`var equal = reqire('deep-equal');`), 'test includes additional imports');
 });
 
@@ -136,7 +160,7 @@ test('it should generate a mocha test, when testLib arg === mocha', assert => {
     reducer: reducer, 
     testLib: 'mocha'
   });
-  const generatedTest = record5.props.getTest();
+  const generatedTest = record5.props.createNewTest();
   assert.ok(generatedTest.includes('describe'), 'generated tested is in mocha style');
 });
 
@@ -146,7 +170,7 @@ test('it should generate an ava test, when testLib arg === ava', assert => {
     reducer: reducer, 
     testLib: 'ava'
   });
-  const generatedTest = record6.props.getTest();
+  const generatedTest = record6.props.createNewTest();
   assert.ok(generatedTest.includes('ava'), 'generated tested is in ava style');
 });
 
@@ -155,7 +179,7 @@ test('it should generate a tape test, when testLib arg is not supplied', assert 
   const record7 = reduxRecord({
     reducer: reducer
   });
-  const generatedTest = record7.props.getTest();
+  const generatedTest = record7.props.createNewTest();
   assert.ok(generatedTest.includes('tape'), 'generated tested is in tape style');
 });
 
@@ -165,7 +189,7 @@ test('it should generate a tape test, when testLib arg is tape', assert => {
     reducer: reducer,
     testLib: 'tape'
   });
-  const generatedTest = record8.props.getTest();
+  const generatedTest = record8.props.createNewTest();
   assert.ok(generatedTest.includes('tape'), 'generated tested is in tape style');
 });
 
@@ -175,7 +199,7 @@ test('it should use a custom test generation function when arg supplied to testL
     reducer: reducer,
     testLib: () => 'custom test'
   });
-  const generatedTest = record8.props.getTest();
+  const generatedTest = record8.props.createNewTest();
   assert.equal(generatedTest, 'custom test','generated tested is in custom style');
 });
 
