@@ -63,7 +63,6 @@ class TestRecorder extends React.Component {
             }
             else {
               this.props.showTest();
-              this.forceUpdate();
             }
           }}
         />

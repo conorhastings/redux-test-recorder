@@ -92,6 +92,7 @@ const reduxRecord = function({
     prevTests.push(test);
     testIndex = prevTests.length - 1;
     updateListeners();
+    return test;
   }
 
   const middleware = ({getState}) => (next) => (action) => {
