@@ -55,6 +55,17 @@ export default class DisplayTest extends React.Component {
     }
   }
 
+  shouldComponentUpdate(nextProps) {
+    return !!(
+        (
+          this.props.testIndex !== nextProps.testIndex && 
+          nextProps.tests[nextProps.testIndex] !== undefined &&
+          nextProps.showingTest
+        ) ||
+        this.props.showingTest && !nextProps.showingTest
+    );
+  }
+
   componentDidUpdate() {
     // will be string true when getting attribute from native dom element
     if (this.code && this.code.getAttribute('contentEditable') !== 'true') {
@@ -70,7 +81,7 @@ export default class DisplayTest extends React.Component {
   onClick({ target }) {
     if (this.container && 
         !this.container.contains(target) && 
-        this.props.shouldShowTest() &&
+        this.props.showingTest &&
         target.className !== 'redux-test-recorder-record-button' &&
         target.className !== 'redux-test-recorder-tabs' &&
         target.className !== 'redux-test-recorder-tab' &&
@@ -90,11 +101,10 @@ export default class DisplayTest extends React.Component {
   }
 
   render() {
-    const { getTest, shouldShowTest, onKeyPress, hideTest, getNumTests, testIndex, onTabClick } = this.props;
-    if (!shouldShowTest()) {
+    const { tests, showingTest, onKeyPress, hideTest, numTests, testIndex, onTabClick } = this.props;
+    if (!showingTest) {
       return null;
     }
-
     return (
       <CloseOnEscape onEscape={onKeyPress}>
         <div>
@@ -105,13 +115,13 @@ export default class DisplayTest extends React.Component {
               <pre>
                 <code>
                   <SyntaxHighlighter language='javascript' style={docco}>
-                    {getTest(testIndex)}
+                    {tests[testIndex]}
                   </SyntaxHighlighter>
                 </code>
               </pre>
             </div>
           </div>
-          <Tabs numTests={getNumTests()} onTabClick={onTabClick} testIndex={testIndex} />
+          <Tabs numTests={numTests} onTabClick={onTabClick} testIndex={testIndex} />
         </div>
       </CloseOnEscape>
     );

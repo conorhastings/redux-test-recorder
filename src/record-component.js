@@ -13,7 +13,7 @@ const makeCircle = (radius, color) => {
   }; 
 };
 
-const Record = ({ getRecordingStatus, onClick, onMouseOver, onMouseOut, hovered, includeShowTestsButton }) => {
+const Record = ({ recordingStatus, onClick, onMouseOver, onMouseOut, hovered, includeShowTestsButton }) => {
   let style = makeCircle(50, 'gainsboro');
   style.boxShadow = '2px 2px 5px #888888';
   style.zIndex = 99;
@@ -30,7 +30,7 @@ const Record = ({ getRecordingStatus, onClick, onMouseOver, onMouseOut, hovered,
       onMouseOver={onMouseOver}
       onMouseOut={onMouseOut} 
       style={style} 
-      onClick={() => onClick(getRecordingStatus())}
+      onClick={() => onClick(recordingStatus)}
     >
       <div className='redux-test-recorder-record-button' style={innerCirlcleStyle} />
     </div>
