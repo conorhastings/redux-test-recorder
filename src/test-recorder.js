@@ -14,9 +14,13 @@ class TestRecorder extends React.Component {
   }
 
   componentDidMount() {
-    this.props.listen(testState => {
+    this.unlisten = this.props.listen(testState => {
       this.setState({...this.state, ...testState});
     });
+  }
+
+  componentWillUnmount() {
+    this.unlisten();
   }
 
   onClick(recordingStatus) {
