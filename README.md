@@ -2,7 +2,7 @@
 
 **NOTE YOUR STATE TREE MUST BE SERIALIZABLE**
 
-Redux test recorder is a redux middleware + included component for automagically generating tests for your reducers based on the actions in your app.
+Redux test recorder is a redux middleware + included react component(though the recording functionality is not react specific) for automagically generating tests for your reducers based on the actions in your app.
 
 [![Build Status](https://travis-ci.org/conorhastings/redux-test-recorder.svg?branch=master)](https://travis-ci.org/conorhastings/redux-test-recorder)
 
