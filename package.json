@@ -44,13 +44,9 @@
     "react-dom": "^0.14.6",
     "react-redux": "^4.0.6",
     "redux": "^3.0.5",
+    "redux-test-recorder-react": "^1.0.0",
     "tape": "^4.4.0",
     "tape-run": "^2.1.1",
     "webpack": "^1.12.10"
-  },
-  "dependencies": {
-    "filesaver.js": "^0.2.0",
-    "react-close-on-escape": "^1.0.0",
-    "react-syntax-highlighter": "^2.0.4"
   }
 }

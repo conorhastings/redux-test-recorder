@@ -3,7 +3,7 @@ import { Provider, connect } from 'react-redux';
 import React, { Component } from 'react';
 import { render } from 'react-dom';
 import reduxRecord from '../dist';
-import { TestRecorder } from '../dist';
+import TestRecorder from 'redux-test-recorder-react';
 
 const increment = () => {
   return {type: 'INCREMENT'};
