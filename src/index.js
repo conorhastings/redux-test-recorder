@@ -1,5 +1,4 @@
 import createTest, { isTestLibrarySupported } from './create-test';
-import TestRecorder from './test-recorder';
 
 const reduxRecord = function({
   reducer, 
@@ -127,5 +126,5 @@ const reduxRecord = function({
   };
   return { middleware, props };
 };
-export { TestRecorder as TestRecorder };
+
 export default reduxRecord;
