@@ -222,3 +222,68 @@ test('it should throw an error if testLib arg is string and not currently suppor
     }, 'testLib argument does not contain a supported testing library. Feel free to make a pr adding support or use a custom test generation function for testLib arg')
   ));
 });
+
+// Test nested state and stateKey notation with dots
+
+const nestedState = {
+  nestedAdd: 0,
+  nestedSubstract: 0
+}
+const nestedAdd = (
+  state = nestedState, { type, payload }
+) => {
+  let newState;
+  switch (type) {
+    case 'INCREMENT':
+      newState = state + 1;
+      break;
+    default:
+      newState = state;
+  }
+  return newState;
+}
+
+const nestedSubstract = (
+  state = nestedState, { type, payload }
+) => {
+  let newState;
+  switch (type) {
+    case 'DECREMENT':
+      newState = state - 1;
+      break;
+    default:
+      newState = state;
+  }
+  return newState;
+}
+
+let nestedState2 = {};
+const nestedCombined = combineReducers({
+  first: combineReducers({nestedAdd, nestedSubstract})
+});
+const nestedStateKey = 'first.nestedAdd'
+const nestedRecord = reduxRecord({
+  reducer: nestedAdd,
+  includeReducer: true,
+  stateKey: nestedStateKey,
+  actionSubset: { INCREMENT: 'INCREMENT' }
+});
+const nestedListen =
+  nestedRecord.props.listen(newState => nestedState2 = newState);
+const nestedCreateStoreWithMiddleware =
+  applyMiddleware(nestedRecord.middleware)(createStore);
+const nestedStore = nestedCreateStoreWithMiddleware(nestedCombined);
+nestedRecord.props.startRecord();
+nestedStore.dispatch(increment());
+nestedStore.dispatch(increment());
+nestedStore.dispatch(increment());
+nestedStore.dispatch(decrement());
+nestedRecord.props.createNewTest();
+
+test("handles nested states with dot-supporting stateKey", assert => {
+  assert.equal(nestedStateKey.split('.').length, 2);
+  assert.end();
+});
+
+eval(nestedState2.tests[0]);
+nestedListen();
