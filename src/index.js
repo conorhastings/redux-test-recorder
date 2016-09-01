@@ -1,12 +1,13 @@
 import createTest, { isTestLibrarySupported } from './create-test';
 
-const _returnChildState(stateKey, stateObj) => {
+const _returnChildState = (stateKey, stateObj) => {
   if (!stateKey) {
     return stateObj;
   };
   const splitState = stateKey.split('.');
-  return splitState.reduce((currentLevelObj, levelLabel) => {
-    return currentLevelObj[levelLabel] || {};
+  return splitState.reduce((higherLeveLobject, levelLabel) => {
+    const currentLevelObject = higherLeveLobject[levelLabel]
+    return currentLevelObject === undefined ? {} : currentLevelObject;
   }, stateObj);
 };
 
