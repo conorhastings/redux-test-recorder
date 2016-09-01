@@ -1,13 +1,18 @@
 import createTest, { isTestLibrarySupported } from './create-test';
 
-const _returnChildState = (stateKey, stateObj) => {
+function getNestedState (stateKey, stateObj) {
   if (!stateKey) {
     return stateObj;
   };
   const splitState = stateKey.split('.');
   return splitState.reduce((higherLeveLobject, levelLabel) => {
-    const currentLevelObject = higherLeveLobject[levelLabel]
-    return currentLevelObject === undefined ? {} : currentLevelObject;
+    const currentLevelObject = higherLeveLobject[levelLabel];
+    if (currentLevelObject === undefined) {
+      throw new Error(
+        'Provided stateKey doesnt match the shape of the state object.'
+      );
+    };
+    return currentLevelObject;
   }, stateObj);
 };
 
@@ -107,9 +112,9 @@ const reduxRecord = function({
 
   const middleware = ({getState}) => (next) => (action) => {
     if (recording) {
-      const prevState = _returnChildState(stateKey, getState());
+      const prevState = getNestedState(stateKey, getState());
       next(action);
-      const nextState = _returnChildState(stateKey, getState());
+      const nextState = getNestedState(stateKey, getState());
       if (!actionSubset || actionSubset[action.type]) {
         actions.push({action, prevState, nextState});
       }
