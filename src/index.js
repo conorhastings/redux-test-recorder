@@ -1,5 +1,15 @@
 import createTest, { isTestLibrarySupported } from './create-test';
 
+const _returnChildState(stateKey, stateObj) => {
+  if (!stateKey) {
+    return stateObj;
+  };
+  const splitState = stateKey.split('.');
+  return splitState.reduce((currentLevelObj, levelLabel) => {
+    return currentLevelObj[levelLabel] || {};
+  }, stateObj);
+};
+
 const reduxRecord = function({
   reducer,
   includeReducer = false,
@@ -96,9 +106,9 @@ const reduxRecord = function({
 
   const middleware = ({getState}) => (next) => (action) => {
     if (recording) {
-      const prevState = stateKey ? getState()[stateKey] : getState();
+      const prevState = _returnChildState(stateKey, getState());
       next(action);
-      const nextState = stateKey ? getState()[stateKey] : getState();
+      const nextState = _returnChildState(stateKey, getState());
       if (!actionSubset || actionSubset[action.type]) {
         actions.push({action, prevState, nextState});
       }
