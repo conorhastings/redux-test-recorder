@@ -97,8 +97,8 @@ eval(state2.tests[0]);
 listen2();
 
 const record3 = reduxRecord({
-  reducer: add, 
-  includeReducer: false 
+  reducer: add,
+  includeReducer: false
 });
 
 test('reducer not included when includeReducer = false', assert => {
@@ -146,8 +146,8 @@ test('shouldShowTest is true after showTest is fired', assert => {
 test('extra imports are included when import arg is given', assert => {
   assert.plan(1);
   const record4 = reduxRecord({
-    reducer: add, 
-    imports: `var equal = reqire('deep-equal');` 
+    reducer: add,
+    imports: `var equal = reqire('deep-equal');`
   });
   const generatedTest = record4.props.createNewTest();
 
@@ -157,7 +157,7 @@ test('extra imports are included when import arg is given', assert => {
 test('it should generate a mocha test, when testLib arg === mocha', assert => {
   assert.plan(1);
   const record5 = reduxRecord({
-    reducer: reducer, 
+    reducer: reducer,
     testLib: 'mocha'
   });
   const generatedTest = record5.props.createNewTest();
@@ -167,7 +167,7 @@ test('it should generate a mocha test, when testLib arg === mocha', assert => {
 test('it should generate an ava test, when testLib arg === ava', assert => {
   assert.plan(1);
   const record6 = reduxRecord({
-    reducer: reducer, 
+    reducer: reducer,
     testLib: 'ava'
   });
   const generatedTest = record6.props.createNewTest();
