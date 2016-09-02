@@ -1,8 +1,24 @@
 import createTest, { isTestLibrarySupported } from './create-test';
 
+function getNestedState (stateKey, stateObj) {
+  if (!stateKey) {
+    return stateObj;
+  };
+  const splitState = stateKey.split('.');
+  return splitState.reduce((higherLeveLobject, levelLabel) => {
+    const currentLevelObject = higherLeveLobject[levelLabel];
+    if (currentLevelObject === undefined) {
+      throw new Error(
+        'Provided stateKey doesnt match the shape of the state object.'
+      );
+    };
+    return currentLevelObject;
+  }, stateObj);
+};
+
 const reduxRecord = function({
-  reducer, 
-  includeReducer = false, 
+  reducer,
+  includeReducer = false,
   stateKey,
   actionSubset,
   equality = '(result, nextState) => result === nextState',
@@ -10,7 +26,7 @@ const reduxRecord = function({
   testLib = 'tape',
   numTestsToSave = 5,
   includeShowTestsButton = false
-}) { 
+}) {
   let actions = [];
   let recording = false;
   let showingTest = false;
@@ -33,7 +49,7 @@ const reduxRecord = function({
       listeners.forEach(fn => fn(newTestState));
     }
   }
-  
+
   // we can skip type checking to see if equality arg is a string since string.toString() returns same string
   const equalityFunction = equality.toString();
   const startRecord = () => {
@@ -71,7 +87,7 @@ const reduxRecord = function({
     throw new Error('testLib argument must be a string or a function');
   }
   if (typeof testLib === 'string' && !isTestLibrarySupported(testLib)) {
-    throw new Error('testLib argument does not contain a supported testing library. ' + 
+    throw new Error('testLib argument does not contain a supported testing library. ' +
       'Feel free to make a pr adding support or use a custom test generation function for testLib arg');
   }
 
@@ -96,9 +112,9 @@ const reduxRecord = function({
 
   const middleware = ({getState}) => (next) => (action) => {
     if (recording) {
-      const prevState = stateKey ? getState()[stateKey] : getState();
+      const prevState = getNestedState(stateKey, getState());
       next(action);
-      const nextState = stateKey ? getState()[stateKey] : getState();
+      const nextState = getNestedState(stateKey, getState());
       if (!actionSubset || actionSubset[action.type]) {
         actions.push({action, prevState, nextState});
       }
@@ -113,11 +129,11 @@ const reduxRecord = function({
     updateListeners();
     return () => listeners.splice(listeners.splice(listeners.indexOf(fn), 1));
   }
-  const props = { 
-    startRecord, 
-    stopRecord, 
-    createNewTest, 
-    hideTest, 
+  const props = {
+    startRecord,
+    stopRecord,
+    createNewTest,
+    hideTest,
     showTest,
     emptyActions,
     updateTestIndex,
