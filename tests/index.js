@@ -193,13 +193,23 @@ test('it should generate a tape test, when testLib arg is tape', assert => {
   assert.ok(generatedTest.includes('tape'), 'generated tested is in tape style');
 });
 
+test('it should generate a jest test, when testLib arg is jest', assert => {
+  assert.plan(1);
+  const record9 = reduxRecord({
+    reducer: reducer,
+    testLib: 'jest'
+  });
+  const generatedTest = record9.props.createNewTest();
+  assert.ok(generatedTest.includes('jest'), 'generated tested is in jest style');
+});
+
 test('it should use a custom test generation function when arg supplied to testLib is function not string', assert => {
   assert.plan(1);
-  const record8 = reduxRecord({
+  const record10 = reduxRecord({
     reducer: reducer,
     testLib: () => 'custom test'
   });
-  const generatedTest = record8.props.createNewTest();
+  const generatedTest = record10.props.createNewTest();
   assert.equal(generatedTest, 'custom test','generated tested is in custom style');
 });
 
