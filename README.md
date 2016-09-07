@@ -12,7 +12,7 @@ Redux test recorder is a redux middleware for automatically generating tests for
 
 Also take a look at our <a href="https://travis-ci.org/conorhastings/redux-test-recorder">latest build</a> which currently runs a test generated using this module by taking advantage of the `eval` command. For a better idea of what is going on, you can take a look at the <a href="https://github.com/conorhastings/redux-test-recorder/blob/master/tests/index.js">test file here</a>.
 
-<img src='http://i.imgur.com/TUMGnnb.gif' />
+<img src='http://i.imgur.com/43dX9jO.gif' />
 
 ### Install
 
