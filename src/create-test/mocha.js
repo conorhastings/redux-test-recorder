@@ -2,7 +2,7 @@ export default function createMochaTest({actions, imports, reducer, equalityFunc
   const its = actions.map((action, index) => {
     return `  it('${action.action.type} (action index ${index}) should correctly update state', function() {
   var action = actions[${index}];
-  var result = reducer(active.prevState, action.action);
+  var result = reducer(action.prevState, action.action);
   assert.ok(equality(result, action.nextState));
 });
 `

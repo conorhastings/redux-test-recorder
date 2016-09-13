@@ -12,7 +12,7 @@ Redux test recorder is a redux middleware for automatically generating tests for
 
 Also take a look at our <a href="https://travis-ci.org/conorhastings/redux-test-recorder">latest build</a> which currently runs a test generated using this module by taking advantage of the `eval` command. For a better idea of what is going on, you can take a look at the <a href="https://github.com/conorhastings/redux-test-recorder/blob/master/tests/index.js">test file here</a>.
 
-<img src='http://i.imgur.com/TUMGnnb.gif' />
+<img src='http://i.imgur.com/43dX9jO.gif' />
 
 ### Install
 
@@ -81,7 +81,7 @@ This will allow you to generate tests on your reducer with a record button in th
 * **actionSubset(*optional*)** - allows you to record against a subset of actions instead of all actions. Useful combined with `stateKey` to test a single reducer.
 * **equality(*optional*)** - a function used to determine if the reducer returned correct state. Receives result of the reducer call and nextState returned during the flow of the application (**note, this api is in flux**). deafults to `===`. This argument can *also* be a *string*. This is useful if you want to call a function you will include in your test file, since calling external functions will not properly stringify that external function. 
 * **imports(*optional*)**` - a string argument where you can pass in other modules that you would like included iny our test file. Useful if you want to reference external functions in your equality check.
-* **testLib(*optional*)** - defaults to `tape`. Currently supports `tape`, `ava`, and `mocha`, and <a href="https://github.com/sotojuan/redux-ava">`redux-ava`</a>. You can also optionally supply a function to this argument to generate your own tests. Will receive `state, actions, imports, reducer, equalityFunction` as arguments and expects return type to be a string containing your test contents.
+* **testLib(*optional*)** - defaults to `tape`. Currently supports `tape`, `ava`, and `mocha`, `jest`, and <a href="https://github.com/sotojuan/redux-ava">`redux-ava`</a>. You can also optionally supply a function to this argument to generate your own tests. Will receive `state, actions, imports, reducer, equalityFunction` as arguments and expects return type to be a string containing your test contents.
 * **numTestsToSave(*optional*, defaults to 5)** - number of previous tests that will be accessible in the panel when tests are being displayed. Higher number = newer.
 
 ### Create Your Own Testing Interface
