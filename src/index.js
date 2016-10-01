@@ -1,3 +1,4 @@
+import isPlainObject from "lodash.isplainobject";
 import createTest, { isTestLibrarySupported } from './create-test';
 
 function getNestedState (stateKey, stateObj) {
@@ -111,7 +112,7 @@ const reduxRecord = function({
   }
 
   const middleware = ({getState}) => (next) => (action) => {
-    if (recording) {
+    if (recording && isPlainObject(action) && action.type !== undefined) {
       const prevState = getNestedState(stateKey, getState());
       next(action);
       const nextState = getNestedState(stateKey, getState());
